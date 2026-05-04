@@ -1,38 +1,35 @@
-.App {
-  text-align: center;
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import PrivateRoute from './components/PrivateRoute';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Enseignants from './pages/Enseignants';
+import Matieres from './pages/Matieres';
+import Heures from './pages/Heures';
+import Paiement from './pages/Paiement';
+import MonEspace from './pages/MonEspace';
+import Attributions from './pages/Attributions';
+import Utilisateurs from './pages/Utilisateurs';
+
+function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/dashboard"    element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+          <Route path="/mon-espace"   element={<PrivateRoute roles={['enseignant']}><MonEspace /></PrivateRoute>} />
+          <Route path="/enseignants"  element={<PrivateRoute roles={['admin','rh']}><Enseignants /></PrivateRoute>} />
+          <Route path="/matieres"     element={<PrivateRoute roles={['admin','rh']}><Matieres /></PrivateRoute>} />
+          <Route path="/heures"       element={<PrivateRoute roles={['admin','rh']}><Heures /></PrivateRoute>} />
+          <Route path="/paiement"     element={<PrivateRoute roles={['admin','rh']}><Paiement /></PrivateRoute>} />
+          <Route path="/attributions" element={<PrivateRoute roles={['admin','rh']}><Attributions /></PrivateRoute>} />
+          <Route path="/utilisateurs" element={<PrivateRoute roles={['admin']}><Utilisateurs /></PrivateRoute>} />
+          <Route path="*" element={<Navigate to="/login" />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  );
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
-}
-
-.App-link {
-  color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
+export default App;

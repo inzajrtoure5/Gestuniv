@@ -12,20 +12,26 @@ const Navbar = () => {
 
   return (
     <nav style={styles.nav}>
-      <div style={styles.brand}>GestUniv</div>
+      <div style={styles.brand}>🎓 GestUniv</div>
       <div style={styles.links}>
-        <Link style={styles.link} to="/dashboard">Tableau de bord</Link>
-        {['admin','rh'].includes(utilisateur?.role) && (
+        {utilisateur?.role === 'enseignant' ? (
+          <Link style={styles.link} to="/mon-espace">Mon Espace</Link>
+        ) : (
           <>
+            <Link style={styles.link} to="/dashboard">Tableau de bord</Link>
             <Link style={styles.link} to="/enseignants">Enseignants</Link>
+            <Link style={styles.link} to="/attributions">Attributions</Link>
             <Link style={styles.link} to="/matieres">Matières</Link>
             <Link style={styles.link} to="/heures">Heures</Link>
             <Link style={styles.link} to="/paiement">Paiement</Link>
+            {utilisateur?.role === 'admin' && (
+              <Link style={styles.link} to="/utilisateurs">Utilisateurs</Link>
+            )}
           </>
         )}
       </div>
       <div style={styles.user}>
-        <span style={styles.userName}>{utilisateur?.prenom} ({utilisateur?.role})</span>
+        <span style={styles.userName}>{utilisateur?.prenom} — <b>{utilisateur?.role}</b></span>
         <button style={styles.btn} onClick={handleLogout}>Déconnexion</button>
       </div>
     </nav>
