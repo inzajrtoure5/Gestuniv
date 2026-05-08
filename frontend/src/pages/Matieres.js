@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import Navbar from '../components/Navbar';
 import api from '../services/api';
+import AppLayout from '../components/AppLayout';
 
 const Matieres = () => {
   const [matieres, setMatieres]   = useState([]);
@@ -44,17 +44,26 @@ const Matieres = () => {
   };
 
   return (
-    <div>
-      <Navbar />
+    <AppLayout
+      title="Matières"
+      right={
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <select style={styles.select} value={anneeId} onChange={(e) => setAnneeId(e.target.value)}>
+            {annees.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.libelle}
+              </option>
+            ))}
+          </select>
+          <button style={styles.btnAdd} onClick={() => setShowForm(!showForm)}>
+            + Ajouter
+          </button>
+        </div>
+      }
+    >
       <div style={styles.container}>
         <div style={styles.header}>
           <h2 style={styles.titre}>Matières</h2>
-          <div style={{display:'flex', gap:'12px'}}>
-            <select style={styles.select} value={anneeId} onChange={e => setAnneeId(e.target.value)}>
-              {annees.map(a => <option key={a.id} value={a.id}>{a.libelle}</option>)}
-            </select>
-            <button style={styles.btnAdd} onClick={() => setShowForm(!showForm)}>+ Ajouter</button>
-          </div>
         </div>
         {message && <div style={styles.msg}>{message}</div>}
         {showForm && (
@@ -114,7 +123,7 @@ const Matieres = () => {
           </tbody>
         </table>
       </div>
-    </div>
+    </AppLayout>
   );
 };
 

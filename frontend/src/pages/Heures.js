@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import Navbar from '../components/Navbar';
 import api from '../services/api';
+import AppLayout from '../components/AppLayout';
 
 const Heures = () => {
   const [heures, setHeures]       = useState([]);
@@ -57,8 +57,7 @@ const Heures = () => {
   const couleurStatut = (s) => s==='validee'?{background:'#e8f5e9',color:'#2e7d32'}:s==='rejetee'?{background:'#fdecea',color:'#c62828'}:{background:'#fff3e0',color:'#e65100'};
 
   return (
-    <div>
-      <Navbar />
+    <AppLayout title="Heures">
       <div style={styles.container}>
         <div style={styles.header}>
           <h2 style={styles.titre}>Heures effectuées</h2>
@@ -141,7 +140,7 @@ const Heures = () => {
           </tbody>
         </table>
       </div>
-    </div>
+    </AppLayout>
   );
 };
 

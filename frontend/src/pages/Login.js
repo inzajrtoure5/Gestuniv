@@ -18,7 +18,9 @@ const Login = () => {
     try {
       const res = await api.post('/auth/login', { email, mot_de_passe: motDePasse });
       login(res.data);
-      navigate('/dashboard');
+      const role = res.data?.utilisateur?.role;
+      if (role === 'enseignant') navigate('/mon-espace');
+      else navigate('/dashboard');
     } catch (err) {
       const msg = err.response?.data?.message || 'Erreur de connexion.';
       const detail = err.response?.data?.erreur;
@@ -62,7 +64,7 @@ const styles = {
   erreur:    { background:'#fdecea', color:'#e74c3c', padding:'10px', borderRadius:'6px', marginBottom:'16px', fontSize:'13px' },
   group:     { marginBottom:'16px' },
   label:     { display:'block', fontSize:'13px', color:'#555', marginBottom:'6px' },
-  input:     { width:'100%', padding:'10px', borderRadius:'6px', border:'1px solid #ddd', fontSize:'14px', boxSizing:'border-box' },
+  input:     { width:'100%', padding:'10px', borderRadius:'6px', border:'1px solid #ddd', fontSize:'14px', boxSizing:'border-box', color:'#111' },
   btn:       { width:'100%', padding:'12px', background:'#1e3a5f', color:'#fff', border:'none', borderRadius:'6px', fontSize:'15px', cursor:'pointer', marginTop:'8px' },
 };
 

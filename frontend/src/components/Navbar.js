@@ -12,7 +12,7 @@ const Navbar = () => {
 
   return (
     <nav style={styles.nav}>
-      <div style={styles.brand}>🎓 GestUniv</div>
+      <div style={styles.brand}>GestUniv</div>
       <div style={styles.links}>
         {utilisateur?.role === 'enseignant' ? (
           <Link style={styles.link} to="/mon-espace">Mon Espace</Link>
@@ -24,8 +24,13 @@ const Navbar = () => {
             <Link style={styles.link} to="/matieres">Matières</Link>
             <Link style={styles.link} to="/heures">Heures</Link>
             <Link style={styles.link} to="/paiement">Paiement</Link>
+            <Link style={styles.link} to="/comptabilite">Comptabilité</Link>
             {utilisateur?.role === 'admin' && (
-              <Link style={styles.link} to="/utilisateurs">Utilisateurs</Link>
+              <>
+                <Link style={styles.link} to="/utilisateurs">Utilisateurs</Link>
+                <Link style={styles.link} to="/parametres">Paramètres</Link>
+                <Link style={styles.link} to="/logs">Logs</Link>
+              </>
             )}
           </>
         )}

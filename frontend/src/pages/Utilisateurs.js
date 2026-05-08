@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import Navbar from '../components/Navbar';
 import api from '../services/api';
+import AppLayout from '../components/AppLayout';
 
 const Utilisateurs = () => {
   const [utilisateurs, setUtilisateurs] = useState([]);
@@ -35,8 +35,7 @@ const Utilisateurs = () => {
                        { background:'#e8f5e9', color:'#2e7d32' };
 
   return (
-    <div>
-      <Navbar />
+    <AppLayout title="Utilisateurs">
       <div style={styles.container}>
         <div style={styles.header}>
           <h2 style={styles.titre}>Gestion des utilisateurs</h2>
@@ -95,7 +94,7 @@ const Utilisateurs = () => {
           </tbody>
         </table>
       </div>
-    </div>
+    </AppLayout>
   );
 };
 

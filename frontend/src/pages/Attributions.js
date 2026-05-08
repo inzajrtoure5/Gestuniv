@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import Navbar from '../components/Navbar';
 import api from '../services/api';
+import AppLayout from '../components/AppLayout';
 
 const Attributions = () => {
   const [attributions, setAttributions] = useState([]);
@@ -11,6 +11,11 @@ const Attributions = () => {
   const [showForm, setShowForm]         = useState(false);
   const [message, setMessage]           = useState('');
   const [form, setForm]                 = useState({ enseignant_id:'', matiere_id:'', annee_id:'', semestre:'S1' });
+  const [query, setQuery]               = useState('');
+  const [sortKey, setSortKey]           = useState('enseignant');
+  const [sortDir, setSortDir]           = useState('asc');
+  const [page, setPage]                 = useState(1);
+  const pageSize = 10;
 
   useEffect(() => {
     api.get('/matieres/annees').then(r => {
@@ -47,18 +52,69 @@ const Attributions = () => {
     }
   };
 
+  const filtered = attributions.filter((a) => {
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    return [a.enseignant, a.matiere, a.niveau, a.filiere, a.semestre]
+      .filter(Boolean)
+      .some((v) => String(v).toLowerCase().includes(q));
+  });
+
+  const toggleSort = (key) => {
+    setPage(1);
+    setSortKey((prev) => {
+      if (prev !== key) {
+        setSortDir('asc');
+        return key;
+      }
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+      return prev;
+    });
+  };
+
+  const sorted = [...filtered].sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const va = a?.[sortKey];
+    const vb = b?.[sortKey];
+
+    if (va == null && vb == null) return 0;
+    if (va == null) return -1 * dir;
+    if (vb == null) return 1 * dir;
+
+    return String(va).localeCompare(String(vb), 'fr', { numeric: true, sensitivity: 'base' }) * dir;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const paged = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
+
   return (
-    <div>
-      <Navbar />
+    <AppLayout
+      title="Attributions"
+      right={
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <select style={styles.select} value={anneeId} onChange={(e) => setAnneeId(e.target.value)}>
+            {annees.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.libelle}
+              </option>
+            ))}
+          </select>
+          <input
+            style={styles.search}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Rechercher (enseignant, matière, filière…)"
+          />
+          <button style={styles.btnAdd} onClick={() => setShowForm(!showForm)}>
+            + Ajouter
+          </button>
+        </div>
+      }
+    >
       <div style={styles.container}>
         <div style={styles.header}>
           <h2 style={styles.titre}>Attributions</h2>
-          <div style={{display:'flex', gap:'12px'}}>
-            <select style={styles.select} value={anneeId} onChange={e => setAnneeId(e.target.value)}>
-              {annees.map(a => <option key={a.id} value={a.id}>{a.libelle}</option>)}
-            </select>
-            <button style={styles.btnAdd} onClick={() => setShowForm(!showForm)}>+ Ajouter</button>
-          </div>
         </div>
         {message && <div style={styles.msg}>{message}</div>}
         {showForm && (
@@ -94,16 +150,16 @@ const Attributions = () => {
         <table style={styles.table}>
           <thead>
             <tr style={styles.thead}>
-              <th style={styles.th}>Enseignant</th>
-              <th style={styles.th}>Matière</th>
-              <th style={styles.th}>Niveau</th>
-              <th style={styles.th}>Filière</th>
-              <th style={styles.th}>Semestre</th>
+              <th style={{ ...styles.th, cursor: 'pointer' }} onClick={() => toggleSort('enseignant')}>Enseignant</th>
+              <th style={{ ...styles.th, cursor: 'pointer' }} onClick={() => toggleSort('matiere')}>Matière</th>
+              <th style={{ ...styles.th, cursor: 'pointer' }} onClick={() => toggleSort('niveau')}>Niveau</th>
+              <th style={{ ...styles.th, cursor: 'pointer' }} onClick={() => toggleSort('filiere')}>Filière</th>
+              <th style={{ ...styles.th, cursor: 'pointer' }} onClick={() => toggleSort('semestre')}>Semestre</th>
               <th style={styles.th}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {attributions.map((a, i) => (
+            {paged.map((a, i) => (
               <tr key={a.id} style={i%2===0?styles.trEven:{}}>
                 <td style={styles.td}>{a.enseignant}</td>
                 <td style={styles.td}>{a.matiere}</td>
@@ -117,8 +173,21 @@ const Attributions = () => {
             ))}
           </tbody>
         </table>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', color: '#666', fontSize: '13px' }}>
+          <div>
+            Affichage {(sorted.length === 0) ? 0 : ((safePage - 1) * pageSize + 1)}–{Math.min(safePage * pageSize, sorted.length)} sur {sorted.length}
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button style={styles.btnDel} type="button" onClick={() => setPage(1)} disabled={safePage === 1}>⟪</button>
+            <button style={styles.btnDel} type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}>Précédent</button>
+            <div style={{ minWidth: '80px', textAlign: 'center' }}>{safePage}/{totalPages}</div>
+            <button style={styles.btnDel} type="button" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}>Suivant</button>
+            <button style={styles.btnDel} type="button" onClick={() => setPage(totalPages)} disabled={safePage === totalPages}>⟫</button>
+          </div>
+        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 };
 
@@ -127,6 +196,7 @@ const styles = {
   header:    { display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' },
   titre:     { color:'#1e3a5f', margin:0 },
   select:    { padding:'8px 12px', borderRadius:'6px', border:'1px solid #ddd', fontSize:'14px' },
+  search:    { padding:'8px 12px', borderRadius:'6px', border:'1px solid #ddd', fontSize:'14px', minWidth:'320px' },
   btnAdd:    { background:'#1e3a5f', color:'#fff', border:'none', borderRadius:'6px', padding:'8px 18px', cursor:'pointer', fontSize:'14px' },
   btnCancel: { background:'#ccc', color:'#333', border:'none', borderRadius:'6px', padding:'8px 18px', cursor:'pointer', fontSize:'14px' },
   btnDel:    { background:'#fdecea', color:'#e74c3c', border:'none', borderRadius:'4px', padding:'4px 10px', cursor:'pointer', fontSize:'12px' },
