@@ -10,6 +10,7 @@ const Matieres = () => {
   const [showForm, setShowForm]   = useState(false);
   const [message, setMessage]     = useState('');
   const [form, setForm]           = useState({ intitule:'', filiere:'', niveau:'L1', volume_cm_prevu:0, volume_td_prevu:0, volume_tp_prevu:0, departement_id:'', annee_id:'' });
+  const [loading, setLoading]     = useState(false);
 
   useEffect(() => {
     api.get('/matieres/annees').then(r => {
@@ -21,25 +22,39 @@ const Matieres = () => {
   }, []);
 
   useEffect(() => {
-    if (anneeId) api.get(`/matieres?annee_id=${anneeId}`).then(r => setMatieres(r.data));
+    if (!anneeId) return;
+    setLoading(true);
+    api
+      .get(`/matieres?annee_id=${anneeId}`)
+      .then(r => setMatieres(r.data))
+      .finally(() => setLoading(false));
   }, [anneeId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      setLoading(true);
       await api.post('/matieres', form);
       setMessage('Matière créée !');
       setShowForm(false);
-      api.get(`/matieres?annee_id=${anneeId}`).then(r => setMatieres(r.data));
+      api
+        .get(`/matieres?annee_id=${anneeId}`)
+        .then(r => setMatieres(r.data))
+        .finally(() => setLoading(false));
     } catch (err) {
       setMessage(err.response?.data?.message || 'Erreur.');
+      setLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
     if (window.confirm('Supprimer cette matière ?')) {
+      setLoading(true);
       await api.delete(`/matieres/${id}`);
-      api.get(`/matieres?annee_id=${anneeId}`).then(r => setMatieres(r.data));
+      api
+        .get(`/matieres?annee_id=${anneeId}`)
+        .then(r => setMatieres(r.data))
+        .finally(() => setLoading(false));
     }
   };
 
@@ -106,20 +121,34 @@ const Matieres = () => {
             </tr>
           </thead>
           <tbody>
-            {matieres.map((m,i) => (
-              <tr key={m.id} style={i%2===0?styles.trEven:{}}>
-                <td style={styles.td}>{m.intitule}</td>
-                <td style={styles.td}>{m.filiere}</td>
-                <td style={styles.td}><span style={styles.badge}>{m.niveau}</span></td>
-                <td style={styles.td}>{m.departement_nom}</td>
-                <td style={styles.td}>{m.volume_cm_prevu}h</td>
-                <td style={styles.td}>{m.volume_td_prevu}h</td>
-                <td style={styles.td}>{m.volume_tp_prevu}h</td>
-                <td style={styles.td}>
-                  <button style={styles.btnDel} onClick={() => handleDelete(m.id)}>Supprimer</button>
+            {loading ? (
+              <tr>
+                <td style={{ ...styles.td, textAlign: 'center', color: '#666' }} colSpan={8}>
+                  Chargement…
                 </td>
               </tr>
-            ))}
+            ) : matieres.length === 0 ? (
+              <tr>
+                <td style={{ ...styles.td, textAlign: 'center', color: '#999' }} colSpan={8}>
+                  Aucune donnée.
+                </td>
+              </tr>
+            ) : (
+              matieres.map((m,i) => (
+                <tr key={m.id} style={i%2===0?styles.trEven:{}}>
+                  <td style={styles.td}>{m.intitule}</td>
+                  <td style={styles.td}>{m.filiere}</td>
+                  <td style={styles.td}><span style={styles.badge}>{m.niveau}</span></td>
+                  <td style={styles.td}>{m.departement_nom}</td>
+                  <td style={styles.td}>{m.volume_cm_prevu}h</td>
+                  <td style={styles.td}>{m.volume_td_prevu}h</td>
+                  <td style={styles.td}>{m.volume_tp_prevu}h</td>
+                  <td style={styles.td}>
+                    <button style={styles.btnDel} onClick={() => handleDelete(m.id)} disabled={loading}>Supprimer</button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

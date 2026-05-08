@@ -72,17 +72,31 @@ const LogsActions = () => {
               </tr>
             </thead>
             <tbody>
-              {rows.map((l, i) => (
-                <tr key={l.id} style={i % 2 === 0 ? styles.trEven : {}}>
-                  <td style={styles.td}>{new Date(l.created_at).toLocaleString('fr-FR')}</td>
-                  <td style={styles.td}>{l.utilisateur || '-'}</td>
-                  <td style={styles.td}>{l.role || '-'}</td>
-                  <td style={styles.td}>{l.action}</td>
-                  <td style={styles.td}>{l.table_cible || '-'}</td>
-                  <td style={styles.td}>{l.enregistrement_id || '-'}</td>
-                  <td style={styles.td}>{l.ip_address || '-'}</td>
+              {loading ? (
+                <tr>
+                  <td style={{ ...styles.td, textAlign: 'center', color: '#666' }} colSpan={7}>
+                    Chargement…
+                  </td>
                 </tr>
-              ))}
+              ) : rows.length === 0 ? (
+                <tr>
+                  <td style={{ ...styles.td, textAlign: 'center', color: '#999' }} colSpan={7}>
+                    Aucune donnée.
+                  </td>
+                </tr>
+              ) : (
+                rows.map((l, i) => (
+                  <tr key={l.id} style={i % 2 === 0 ? styles.trEven : {}}>
+                    <td style={styles.td}>{new Date(l.created_at).toLocaleString('fr-FR')}</td>
+                    <td style={styles.td}>{l.utilisateur || '-'}</td>
+                    <td style={styles.td}>{l.role || '-'}</td>
+                    <td style={styles.td}>{l.action}</td>
+                    <td style={styles.td}>{l.table_cible || '-'}</td>
+                    <td style={styles.td}>{l.enregistrement_id || '-'}</td>
+                    <td style={styles.td}>{l.ip_address || '-'}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

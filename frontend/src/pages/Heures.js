@@ -12,6 +12,7 @@ const Heures = () => {
   const [showForm, setShowForm]   = useState(false);
   const [message, setMessage]     = useState('');
   const [form, setForm]           = useState({ attribution_id:'', date_cours:'', type_heure:'CM', duree:1, salle:'', observations:'' });
+  const [loading, setLoading]     = useState(false);
 
   useEffect(() => {
     api.get('/matieres/annees').then(r => {
@@ -23,7 +24,12 @@ const Heures = () => {
   }, []);
 
   useEffect(() => {
-    if (anneeId) api.get(`/heures?annee_id=${anneeId}${ensId?'&enseignant_id='+ensId:''}`).then(r => setHeures(r.data));
+    if (!anneeId) return;
+    setLoading(true);
+    api
+      .get(`/heures?annee_id=${anneeId}${ensId?'&enseignant_id='+ensId:''}`)
+      .then(r => setHeures(r.data))
+      .finally(() => setLoading(false));
   }, [anneeId, ensId]);
 
   useEffect(() => {
@@ -43,14 +49,24 @@ const Heures = () => {
   };
 
   const handleValider = async (id, statut) => {
+    const label = statut === 'validee' ? 'valider' : 'rejeter';
+    if (!window.confirm(`Confirmer: ${label} cette heure ?`)) return;
     await api.put(`/heures/${id}/valider`, { statut });
-    api.get(`/heures?annee_id=${anneeId}${ensId?'&enseignant_id='+ensId:''}`).then(r => setHeures(r.data));
+    setLoading(true);
+    api
+      .get(`/heures?annee_id=${anneeId}${ensId?'&enseignant_id='+ensId:''}`)
+      .then(r => setHeures(r.data))
+      .finally(() => setLoading(false));
   };
 
   const handleDelete = async (id) => {
     if (window.confirm('Supprimer cette heure ?')) {
       await api.delete(`/heures/${id}`);
-      api.get(`/heures?annee_id=${anneeId}${ensId?'&enseignant_id='+ensId:''}`).then(r => setHeures(r.data));
+      setLoading(true);
+      api
+        .get(`/heures?annee_id=${anneeId}${ensId?'&enseignant_id='+ensId:''}`)
+        .then(r => setHeures(r.data))
+        .finally(() => setLoading(false));
     }
   };
 
@@ -117,26 +133,40 @@ const Heures = () => {
             </tr>
           </thead>
           <tbody>
-            {heures.map((h,i) => (
-              <tr key={h.id} style={i%2===0?styles.trEven:{}}>
-                <td style={styles.td}>{new Date(h.date_cours).toLocaleDateString('fr-FR')}</td>
-                <td style={styles.td}>{h.enseignant}</td>
-                <td style={styles.td}>{h.matiere}</td>
-                <td style={styles.td}><span style={styles.badge}>{h.type_heure}</span></td>
-                <td style={styles.td}>{h.duree}h</td>
-                <td style={styles.td}>{h.salle || '-'}</td>
-                <td style={styles.td}><span style={{...styles.badge, ...couleurStatut(h.statut_validation)}}>{h.statut_validation}</span></td>
-                <td style={styles.td}>
-                  {h.statut_validation === 'en_attente' && (
-                    <>
-                      <button style={styles.btnValid} onClick={() => handleValider(h.id,'validee')}>✓</button>
-                      <button style={styles.btnRejet} onClick={() => handleValider(h.id,'rejetee')}>✗</button>
-                    </>
-                  )}
-                  <button style={styles.btnDel} onClick={() => handleDelete(h.id)}>Suppr.</button>
+            {loading ? (
+              <tr>
+                <td style={{ ...styles.td, textAlign: 'center', color: '#666' }} colSpan={8}>
+                  Chargement…
                 </td>
               </tr>
-            ))}
+            ) : heures.length === 0 ? (
+              <tr>
+                <td style={{ ...styles.td, textAlign: 'center', color: '#999' }} colSpan={8}>
+                  Aucune donnée.
+                </td>
+              </tr>
+            ) : (
+              heures.map((h,i) => (
+                <tr key={h.id} style={i%2===0?styles.trEven:{}}>
+                  <td style={styles.td}>{new Date(h.date_cours).toLocaleDateString('fr-FR')}</td>
+                  <td style={styles.td}>{h.enseignant}</td>
+                  <td style={styles.td}>{h.matiere}</td>
+                  <td style={styles.td}><span style={styles.badge}>{h.type_heure}</span></td>
+                  <td style={styles.td}>{h.duree}h</td>
+                  <td style={styles.td}>{h.salle || '-'}</td>
+                  <td style={styles.td}><span style={{...styles.badge, ...couleurStatut(h.statut_validation)}}>{h.statut_validation}</span></td>
+                  <td style={styles.td}>
+                    {h.statut_validation === 'en_attente' && (
+                      <>
+                        <button style={styles.btnValid} onClick={() => handleValider(h.id,'validee')}>✓</button>
+                        <button style={styles.btnRejet} onClick={() => handleValider(h.id,'rejetee')}>✗</button>
+                      </>
+                    )}
+                    <button style={styles.btnDel} onClick={() => handleDelete(h.id)}>Suppr.</button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

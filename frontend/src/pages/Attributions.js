@@ -15,6 +15,7 @@ const Attributions = () => {
   const [sortKey, setSortKey]           = useState('enseignant');
   const [sortDir, setSortDir]           = useState('asc');
   const [page, setPage]                 = useState(1);
+  const [loading, setLoading]           = useState(false);
   const pageSize = 10;
 
   useEffect(() => {
@@ -28,27 +29,44 @@ const Attributions = () => {
 
   useEffect(() => {
     if (anneeId) {
-      api.get(`/matieres?annee_id=${anneeId}`).then(r => setMat(r.data));
-      api.get(`/attributions?annee_id=${anneeId}`).then(r => setAttributions(r.data));
+      setLoading(true);
+      Promise.all([
+        api.get(`/matieres?annee_id=${anneeId}`),
+        api.get(`/attributions?annee_id=${anneeId}`),
+      ])
+        .then(([m, a]) => {
+          setMat(m.data);
+          setAttributions(a.data);
+        })
+        .finally(() => setLoading(false));
     }
   }, [anneeId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      setLoading(true);
       await api.post('/attributions', form);
       setMessage('Attribution créée !');
       setShowForm(false);
-      api.get(`/attributions?annee_id=${anneeId}`).then(r => setAttributions(r.data));
+      api
+        .get(`/attributions?annee_id=${anneeId}`)
+        .then(r => setAttributions(r.data))
+        .finally(() => setLoading(false));
     } catch (err) {
       setMessage(err.response?.data?.message || 'Erreur.');
+      setLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
     if (window.confirm('Supprimer cette attribution ?')) {
+      setLoading(true);
       await api.delete(`/attributions/${id}`);
-      api.get(`/attributions?annee_id=${anneeId}`).then(r => setAttributions(r.data));
+      api
+        .get(`/attributions?annee_id=${anneeId}`)
+        .then(r => setAttributions(r.data))
+        .finally(() => setLoading(false));
     }
   };
 
@@ -106,7 +124,7 @@ const Attributions = () => {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Rechercher (enseignant, matière, filière…)"
           />
-          <button style={styles.btnAdd} onClick={() => setShowForm(!showForm)}>
+          <button style={styles.btnAdd} onClick={() => setShowForm(!showForm)} disabled={loading}>
             + Ajouter
           </button>
         </div>
@@ -159,18 +177,32 @@ const Attributions = () => {
             </tr>
           </thead>
           <tbody>
-            {paged.map((a, i) => (
-              <tr key={a.id} style={i%2===0?styles.trEven:{}}>
-                <td style={styles.td}>{a.enseignant}</td>
-                <td style={styles.td}>{a.matiere}</td>
-                <td style={styles.td}><span style={styles.badge}>{a.niveau}</span></td>
-                <td style={styles.td}>{a.filiere}</td>
-                <td style={styles.td}>{a.semestre}</td>
-                <td style={styles.td}>
-                  <button style={styles.btnDel} onClick={() => handleDelete(a.id)}>Supprimer</button>
+            {loading ? (
+              <tr>
+                <td style={{ ...styles.td, textAlign: 'center', color: '#666' }} colSpan={6}>
+                  Chargement…
                 </td>
               </tr>
-            ))}
+            ) : paged.length === 0 ? (
+              <tr>
+                <td style={{ ...styles.td, textAlign: 'center', color: '#999' }} colSpan={6}>
+                  Aucune donnée.
+                </td>
+              </tr>
+            ) : (
+              paged.map((a, i) => (
+                <tr key={a.id} style={i%2===0?styles.trEven:{}}>
+                  <td style={styles.td}>{a.enseignant}</td>
+                  <td style={styles.td}>{a.matiere}</td>
+                  <td style={styles.td}><span style={styles.badge}>{a.niveau}</span></td>
+                  <td style={styles.td}>{a.filiere}</td>
+                  <td style={styles.td}>{a.semestre}</td>
+                  <td style={styles.td}>
+                    <button style={styles.btnDel} onClick={() => handleDelete(a.id)} disabled={loading}>Supprimer</button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
 
