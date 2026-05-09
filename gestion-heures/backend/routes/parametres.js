@@ -42,7 +42,7 @@ router.put('/annees/:id/activer', verifierToken, autoriser('admin'), async (req,
   }
 });
 
-router.get('/equivalences', verifierToken, autoriser('admin'), async (req, res) => {
+router.get('/equivalences', verifierToken, autoriser('admin','rh'), async (req, res) => {
   const { annee_id } = req.query;
   if (!annee_id) return res.status(400).json({ message: 'annee_id requis.' });
   try {

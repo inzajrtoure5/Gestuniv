@@ -150,6 +150,32 @@ const RapportComptabilite = () => {
     const annee = annees.find((a) => String(a.id) === String(anneeId))?.libelle || 'annee';
     const doc = new jsPDF('l', 'pt', 'a4');
 
+    const formatMoney = (v) => {
+      const n = Number(v || 0);
+      if (!Number.isFinite(n)) return '0';
+      return n
+        .toLocaleString('fr-FR', { maximumFractionDigits: 0 })
+        .replace(/[\u202F\u00A0]/g, ' ');
+    };
+
+    const fitText = (text, maxWidth) => {
+      const t = String(text ?? '');
+      if (!t) return '';
+      if (doc.getTextWidth(t) <= maxWidth) return t;
+
+      const ellipsis = '…';
+      let lo = 0;
+      let hi = t.length;
+      while (lo < hi) {
+        const mid = Math.ceil((lo + hi) / 2);
+        const candidate = `${t.slice(0, mid)}${ellipsis}`;
+        if (doc.getTextWidth(candidate) <= maxWidth) lo = mid;
+        else hi = mid - 1;
+      }
+      const trimmed = t.slice(0, lo);
+      return trimmed ? `${trimmed}${ellipsis}` : ellipsis;
+    };
+
     const generatedAt = new Date().toLocaleString('fr-FR');
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -181,56 +207,77 @@ const RapportComptabilite = () => {
 
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(10);
-    doc.text(`Total normal: ${Number(totaux.total_normal || 0).toFixed(0)}`, marginX, headerH + 20);
-    doc.text(
-      `Total complémentaire: ${Number(totaux.total_complementaire || 0).toFixed(0)}`,
-      marginX + 180,
-      headerH + 20
-    );
-    doc.text(`Total général: ${Number(totaux.total_general || 0).toFixed(0)}`, marginX + 420, headerH + 20);
+    doc.text(`Totaux (F)`, marginX, headerH + 20);
+    doc.text(`Normal: ${formatMoney(totaux.total_normal)}`, marginX + 90, headerH + 20);
+    doc.text(`Complém.: ${formatMoney(totaux.total_complementaire)}`, marginX + 250, headerH + 20);
+    doc.text(`Général: ${formatMoney(totaux.total_general)}`, marginX + 430, headerH + 20);
 
     doc.setFontSize(9);
     let y = headerH + 50;
-    const lineHeight = 14;
+    const lineHeight = 16;
     const pageBottom = pageHeight - footerH - 14;
 
-    doc.setFillColor(30, 41, 59);
-    doc.rect(marginX, y - 11, pageWidth - marginX * 2, 18, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.text(
-      'Département | Matricule | Enseignant | Heures équiv. | Heures compl. | Normal | Compl. | Total',
-      marginX + 8,
-      y
-    );
-    y += lineHeight;
-    doc.setTextColor(0, 0, 0);
+    const headers = ['Département', 'Matricule', 'Enseignant', 'H. équiv.', 'H. compl.', 'Normal (F)', 'Compl. (F)', 'Total (F)'];
+    const colWidths = [140, 85, 200, 90, 90, 110, 110, 110];
 
+    const drawTableHeader = (yPos) => {
+      doc.setFillColor(30, 41, 59);
+      doc.rect(marginX, yPos - 11, colWidths.reduce((s, w) => s + w, 0), 18, 'F');
+      doc.setTextColor(255, 255, 255);
+      let cx = marginX;
+      headers.forEach((h, idx) => {
+        doc.text(String(h), cx + 8, yPos);
+        cx += colWidths[idx];
+      });
+      doc.setTextColor(0, 0, 0);
+      return yPos + lineHeight;
+    };
+
+    y = drawTableHeader(y);
+
+    let rowIdx = 0;
     for (const e of lignes) {
       const total = Number(e.montant_heures_normales || 0) + Number(e.montant_heures_complementaires || 0);
-      const line = `${e.departement} | ${e.matricule} | ${e.enseignant} | ${Number(e.heures_equivalentes || 0).toFixed(
-        2
-      )} | ${Number(e.heures_complementaires || 0).toFixed(2)} | ${Number(e.montant_heures_normales || 0).toFixed(
-        0
-      )} | ${Number(e.montant_heures_complementaires || 0).toFixed(0)} | ${total.toFixed(0)}`;
+      const row = [
+        e.departement,
+        e.matricule,
+        e.enseignant,
+        Number(e.heures_equivalentes || 0).toFixed(2),
+        Number(e.heures_complementaires || 0).toFixed(2),
+        formatMoney(e.montant_heures_normales),
+        formatMoney(e.montant_heures_complementaires),
+        formatMoney(total),
+      ];
 
       if (y > pageBottom) {
         doc.addPage();
         drawPageHeader();
         y = headerH + 20;
 
-        doc.setFillColor(30, 41, 59);
-        doc.rect(marginX, y - 11, pageWidth - marginX * 2, 18, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.text(
-          'Département | Matricule | Enseignant | Heures équiv. | Heures compl. | Normal | Compl. | Total',
-          marginX + 8,
-          y
-        );
-        y += lineHeight;
-        doc.setTextColor(0, 0, 0);
+        y = drawTableHeader(y);
       }
-      doc.text(line, marginX, y, { maxWidth: pageWidth - marginX * 2 });
+
+      if (rowIdx % 2 === 1) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(marginX, y - 12, colWidths.reduce((s, w) => s + w, 0), lineHeight, 'F');
+      }
+
+      let cx = marginX;
+      row.forEach((cell, idx) => {
+        const padding = 8;
+        const isNumeric = idx >= 3;
+        const maxW = colWidths[idx] - padding * 2;
+        const safe = isNumeric ? String(cell) : fitText(cell, maxW);
+
+        if (isNumeric) {
+          doc.text(String(safe), cx + colWidths[idx] - padding, y, { align: 'right' });
+        } else {
+          doc.text(String(safe), cx + padding, y);
+        }
+        cx += colWidths[idx];
+      });
       y += lineHeight;
+      rowIdx += 1;
     }
 
     const totalPages = doc.getNumberOfPages();

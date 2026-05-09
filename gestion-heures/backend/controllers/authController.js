@@ -61,3 +61,23 @@ exports.profil = async (req, res) => {
   );
   res.json(rows[0]);
 };
+
+// PUT /api/auth/utilisateurs/:id/actif (admin seulement)
+exports.setUtilisateurActif = async (req, res) => {
+  const { actif } = req.body;
+  const userId = Number(req.params.id);
+  const nextActif = Number(actif) === 1 ? 1 : 0;
+
+  if (!userId) return res.status(400).json({ message: 'id utilisateur invalide.' });
+  if (userId === Number(req.utilisateur.id)) {
+    return res.status(400).json({ message: 'Vous ne pouvez pas désactiver votre propre compte.' });
+  }
+
+  try {
+    await pool.execute('UPDATE utilisateurs SET actif = ? WHERE id = ?', [nextActif, userId]);
+    await logAction(req.utilisateur.id, nextActif ? 'ACTIVER' : 'DESACTIVER', 'utilisateurs', userId, null, { actif: nextActif }, req.ip);
+    res.json({ message: nextActif ? 'Utilisateur activé.' : 'Utilisateur désactivé.' });
+  } catch (err) {
+    res.status(500).json({ message: 'Erreur serveur.', erreur: err.message });
+  }
+};

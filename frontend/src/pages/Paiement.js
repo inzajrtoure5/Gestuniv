@@ -115,12 +115,30 @@ const Paiement = () => {
       doc.setTextColor(0, 0, 0);
     };
 
+    const formatMoney = (v) =>
+      Number(v || 0)
+        .toLocaleString('fr-FR', { maximumFractionDigits: 0 })
+        .replace(/[\u202F\u00A0]/g, ' ');
+
+    const fitText = (text, maxWidth) => {
+      let t = String(text ?? '');
+      if (!t) return '';
+      if (doc.getTextWidth(t) <= maxWidth) return t;
+      while (t.length > 1 && doc.getTextWidth(`${t}…`) > maxWidth) {
+        t = t.slice(0, -1);
+      }
+      return `${t}…`;
+    };
+
     drawPageHeader();
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(10);
 
-    const headers = ['Enseignant', 'Grade', 'Statut', 'H. normales', 'H. complém.', 'Montant normal', 'Montant complém.', 'Total'];
-    const colWidths = [55, 28, 22, 22, 22, 35, 35, 25];
+    const rowH = 7;
+
+    const headers = ['Enseignant', 'Grade', 'Statut', 'H. norm.', 'H. compl.', 'Normal (F)', 'Compl. (F)', 'Total (F)'];
+    const colWidths = [55, 28, 22, 20, 20, 32, 32, 28];
+    const tableW = colWidths.reduce((s, w) => s + w, 0);
     const drawHeader = (y) => {
       doc.setFillColor(30, 41, 59);
       doc.rect(marginX, y - 5, colWidths.reduce((s, w) => s + w, 0), 8, 'F');
@@ -131,12 +149,12 @@ const Paiement = () => {
         hx += colWidths[idx];
       });
       doc.setTextColor(0, 0, 0);
-      return y + 6;
+      return y + rowH;
     };
 
     let y = drawHeader(headerH + 12);
 
-    filtered.forEach((e) => {
+    filtered.forEach((e, rowIdx) => {
       const total = Number(e.montant_heures_normales || 0) + Number(e.montant_heures_complementaires || 0);
       const row = [
         e.enseignant,
@@ -144,23 +162,42 @@ const Paiement = () => {
         e.statut,
         `${Number(e.heures_equivalentes || 0).toFixed(1)}h`,
         `${Number(e.heures_complementaires || 0).toFixed(1)}h`,
-        `${Number(e.montant_heures_normales || 0).toLocaleString('fr-FR')} FCFA`,
-        `${Number(e.montant_heures_complementaires || 0).toLocaleString('fr-FR')} FCFA`,
-        `${total.toLocaleString('fr-FR')} FCFA`,
+        formatMoney(e.montant_heures_normales),
+        formatMoney(e.montant_heures_complementaires),
+        formatMoney(total),
       ];
 
-      if (y > pageHeight - footerH - 12) {
+      if (y > pageHeight - footerH - (rowH + 5)) {
         doc.addPage();
         drawPageHeader();
         y = drawHeader(headerH + 12);
       }
 
+      if (rowIdx % 2 === 1) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(marginX, y - 5, tableW, rowH, 'F');
+      }
+
       let cx = marginX;
       row.forEach((cell, idx) => {
-        doc.text(String(cell), cx, y, { maxWidth: colWidths[idx] - 2 });
-        cx += colWidths[idx];
+        const w = colWidths[idx];
+        const pad = 1.2;
+        const raw = String(cell ?? '');
+
+        const isMoneyCol = idx >= 5;
+        const isHoursCol = idx === 3 || idx === 4;
+        const alignRight = isMoneyCol || isHoursCol;
+
+        const txt = fitText(raw, w - pad * 2);
+        const x = alignRight ? cx + w - pad : cx + pad;
+        doc.text(txt, x, y, { align: alignRight ? 'right' : 'left' });
+        cx += w;
       });
-      y += 6;
+
+      doc.setDrawColor(226, 232, 240);
+      doc.line(marginX, y + 2, marginX + tableW, y + 2);
+
+      y += rowH;
     });
 
     const totalPages = doc.getNumberOfPages();

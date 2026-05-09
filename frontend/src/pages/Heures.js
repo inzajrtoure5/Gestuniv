@@ -9,6 +9,9 @@ const Heures = () => {
   const [attributions, setAttrs]  = useState([]);
   const [anneeId, setAnneeId]     = useState('');
   const [ensId, setEnsId]         = useState('');
+  const [query, setQuery]         = useState('');
+  const [statut, setStatut]       = useState('');
+  const [equiv, setEquiv]         = useState({ coeff_cm: 1.5, coeff_td: 1.0, coeff_tp: 0.75 });
   const [showForm, setShowForm]   = useState(false);
   const [message, setMessage]     = useState('');
   const [form, setForm]           = useState({ attribution_id:'', date_cours:'', type_heure:'CM', duree:1, salle:'', observations:'' });
@@ -35,6 +38,22 @@ const Heures = () => {
   useEffect(() => {
     if (ensId && anneeId) api.get(`/heures/attributions?enseignant_id=${ensId}&annee_id=${anneeId}`).then(r => setAttrs(r.data));
   }, [ensId, anneeId]);
+
+  useEffect(() => {
+    if (!anneeId) return;
+    api
+      .get(`/parametres/equivalences?annee_id=${anneeId}`)
+      .then((r) => {
+        if (r.data) {
+          setEquiv({ coeff_cm: Number(r.data.coeff_cm), coeff_td: Number(r.data.coeff_td), coeff_tp: Number(r.data.coeff_tp) });
+        } else {
+          setEquiv({ coeff_cm: 1.5, coeff_td: 1.0, coeff_tp: 0.75 });
+        }
+      })
+      .catch(() => {
+        setEquiv({ coeff_cm: 1.5, coeff_td: 1.0, coeff_tp: 0.75 });
+      });
+  }, [anneeId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -72,6 +91,30 @@ const Heures = () => {
 
   const couleurStatut = (s) => s==='validee'?{background:'#e8f5e9',color:'#2e7d32'}:s==='rejetee'?{background:'#fdecea',color:'#c62828'}:{background:'#fff3e0',color:'#e65100'};
 
+  const selectedEns = ensId ? enseignants.find((e) => String(e.id) === String(ensId)) : null;
+
+  const heuresValideesEquiv = heures
+    .filter((h) => h.statut_validation === 'validee')
+    .reduce((acc, h) => {
+      const d = Number(h.duree || 0);
+      const t = String(h.type_heure || '').toUpperCase();
+      const coeff = t === 'CM' ? equiv.coeff_cm : t === 'TD' ? equiv.coeff_td : t === 'TP' ? equiv.coeff_tp : 1;
+      return acc + d * Number(coeff || 1);
+    }, 0);
+
+  const contrat = Number(selectedEns?.heures_contractuelles || 0);
+  const reste = Math.max(0, contrat - heuresValideesEquiv);
+  const depassement = Math.max(0, heuresValideesEquiv - contrat);
+
+  const filtered = heures.filter((h) => {
+    if (statut && h.statut_validation !== statut) return false;
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    return [h.enseignant, h.matiere, h.type_heure, h.salle, h.statut_validation]
+      .filter(Boolean)
+      .some((v) => String(v).toLowerCase().includes(q));
+  });
+
   return (
     <AppLayout title="Heures">
       <div style={styles.container}>
@@ -79,6 +122,26 @@ const Heures = () => {
           <h2 style={styles.titre}>Heures effectuées</h2>
           <button style={styles.btnAdd} onClick={() => setShowForm(!showForm)}>+ Saisir</button>
         </div>
+
+        {selectedEns && (
+          <div style={styles.kpis}>
+            <div style={styles.kpiCard}>
+              <div style={styles.kpiLabel}>Contrat (h)</div>
+              <div style={styles.kpiValue}>{contrat.toFixed(1)}</div>
+            </div>
+            <div style={styles.kpiCard}>
+              <div style={styles.kpiLabel}>Validé (équiv.)</div>
+              <div style={styles.kpiValue}>{heuresValideesEquiv.toFixed(2)}</div>
+              <div style={styles.kpiSub}>Coeffs: CM {equiv.coeff_cm} / TD {equiv.coeff_td} / TP {equiv.coeff_tp}</div>
+            </div>
+            <div style={styles.kpiCard}>
+              <div style={styles.kpiLabel}>{depassement > 0 ? 'Dépassement' : 'Reste'}</div>
+              <div style={{ ...styles.kpiValue, color: depassement > 0 ? '#c62828' : '#2e7d32' }}>
+                {depassement > 0 ? `+${depassement.toFixed(2)}h` : `${reste.toFixed(2)}h`}
+              </div>
+            </div>
+          </div>
+        )}
         <div style={styles.filtres}>
           <select style={styles.select} value={anneeId} onChange={e => setAnneeId(e.target.value)}>
             {annees.map(a => <option key={a.id} value={a.id}>{a.libelle}</option>)}
@@ -87,6 +150,25 @@ const Heures = () => {
             <option value="">-- Tous les enseignants --</option>
             {enseignants.map(e => <option key={e.id} value={e.id}>{e.nom} {e.prenom}</option>)}
           </select>
+          <select style={styles.select} value={statut} onChange={(e) => setStatut(e.target.value)}>
+            <option value="">-- Tous les statuts --</option>
+            <option value="en_attente">En attente</option>
+            <option value="validee">Validée</option>
+            <option value="rejetee">Rejetée</option>
+          </select>
+          <input
+            style={styles.search}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Rechercher (enseignant, matière, salle…)"
+          />
+          <button
+            type="button"
+            style={styles.btnLight}
+            onClick={() => setStatut((s) => (s === 'en_attente' ? '' : 'en_attente'))}
+          >
+            En attente
+          </button>
         </div>
         {message && <div style={styles.msg}>{message}</div>}
         {showForm && (
@@ -139,14 +221,14 @@ const Heures = () => {
                   Chargement…
                 </td>
               </tr>
-            ) : heures.length === 0 ? (
+            ) : filtered.length === 0 ? (
               <tr>
                 <td style={{ ...styles.td, textAlign: 'center', color: '#999' }} colSpan={8}>
                   Aucune donnée.
                 </td>
               </tr>
             ) : (
-              heures.map((h,i) => (
+              filtered.map((h,i) => (
                 <tr key={h.id} style={i%2===0?styles.trEven:{}}>
                   <td style={styles.td}>{new Date(h.date_cours).toLocaleDateString('fr-FR')}</td>
                   <td style={styles.td}>{h.enseignant}</td>
@@ -179,7 +261,14 @@ const styles = {
   header:    { display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px' },
   titre:     { color:'#1e3a5f', margin:0 },
   filtres:   { display:'flex', gap:'12px', marginBottom:'16px' },
+  kpis:      { display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'12px', marginBottom:'16px' },
+  kpiCard:   { background:'#fff', borderRadius:'10px', padding:'14px 16px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)', border:'1px solid #eef2f7' },
+  kpiLabel:  { fontSize:'12px', color:'#6b7280' },
+  kpiValue:  { marginTop:'6px', fontSize:'22px', fontWeight:700, color:'#0f172a' },
+  kpiSub:    { marginTop:'6px', fontSize:'12px', color:'#94a3b8' },
   select:    { padding:'8px 12px', borderRadius:'6px', border:'1px solid #ddd', fontSize:'14px' },
+  search:    { padding:'8px 12px', borderRadius:'6px', border:'1px solid #ddd', fontSize:'14px', minWidth:'280px' },
+  btnLight:  { background:'#f0f4ff', color:'#1e3a5f', border:'none', borderRadius:'6px', padding:'8px 14px', cursor:'pointer', fontSize:'14px' },
   btnAdd:    { background:'#1e3a5f', color:'#fff', border:'none', borderRadius:'6px', padding:'8px 18px', cursor:'pointer', fontSize:'14px' },
   btnCancel: { background:'#ccc', color:'#333', border:'none', borderRadius:'6px', padding:'8px 18px', cursor:'pointer', fontSize:'14px' },
   btnValid:  { background:'#e8f5e9', color:'#2e7d32', border:'none', borderRadius:'4px', padding:'4px 8px', cursor:'pointer', marginRight:'4px' },

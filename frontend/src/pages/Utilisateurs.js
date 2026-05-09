@@ -34,6 +34,18 @@ const Utilisateurs = () => {
     r==='rh'         ? { background:'#e8f0fe', color:'#1e3a5f' } :
                        { background:'#e8f5e9', color:'#2e7d32' };
 
+  const toggleActif = async (u) => {
+    const nextActif = u.actif ? 0 : 1;
+    const label = nextActif ? 'activer' : 'désactiver';
+    if (!window.confirm(`Confirmer: ${label} cet utilisateur ?`)) return;
+    try {
+      await api.put(`/auth/utilisateurs/${u.id}/actif`, { actif: nextActif });
+      charger();
+    } catch (err) {
+      setMessage(err.response?.data?.message || 'Erreur.');
+    }
+  };
+
   return (
     <AppLayout title="Utilisateurs">
       <div style={styles.container}>
@@ -80,6 +92,7 @@ const Utilisateurs = () => {
               <th style={styles.th}>Email</th>
               <th style={styles.th}>Rôle</th>
               <th style={styles.th}>Statut</th>
+              <th style={styles.th}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -89,6 +102,15 @@ const Utilisateurs = () => {
                 <td style={styles.td}>{u.email}</td>
                 <td style={styles.td}><span style={{...styles.badge, ...roleCouleur(u.role)}}>{u.role}</span></td>
                 <td style={styles.td}><span style={{...styles.badge, background: u.actif?'#e8f5e9':'#f5f5f5', color: u.actif?'#2e7d32':'#999'}}>{u.actif ? 'Actif' : 'Inactif'}</span></td>
+                <td style={styles.td}>
+                  <button
+                    style={u.actif ? styles.btnDel : styles.btnEdit}
+                    type="button"
+                    onClick={() => toggleActif(u)}
+                  >
+                    {u.actif ? 'Désactiver' : 'Activer'}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

@@ -112,8 +112,11 @@ const MonEspace = () => {
     doc.setFontSize(9);
     y += 6;
 
+    const rowH = 7;
+
     const headers = ['Date', 'Matière', 'Type', 'Durée', 'Salle', 'Statut'];
     const colWidths = [20, 70, 12, 14, 25, 25];
+    const tableW = colWidths.reduce((s, w) => s + w, 0);
     const drawHeader = (yPos) => {
       doc.setFillColor(30, 41, 59);
       doc.rect(marginX, yPos - 5, colWidths.reduce((s, w) => s + w, 0), 8, 'F');
@@ -124,13 +127,13 @@ const MonEspace = () => {
         hx += colWidths[idx];
       });
       doc.setTextColor(0, 0, 0);
-      return yPos + 6;
+      return yPos + rowH;
     };
 
     y = drawHeader(y);
 
-    heures.forEach((h) => {
-      if (y > pageHeight - footerH - 8) {
+    heures.forEach((h, rowIdx) => {
+      if (y > pageHeight - footerH - (rowH + 5)) {
         doc.addPage();
         drawPageHeader();
         y = drawHeader(headerH + 10);
@@ -143,12 +146,18 @@ const MonEspace = () => {
         h.salle || '-',
         h.statut_validation,
       ];
+
+      if (rowIdx % 2 === 1) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(marginX, y - 5, tableW, rowH, 'F');
+      }
+
       let cx = marginX;
       row.forEach((cell, idx) => {
         doc.text(String(cell), cx, y, { maxWidth: colWidths[idx] - 2 });
         cx += colWidths[idx];
       });
-      y += 6;
+      y += rowH;
     });
 
     const totalPages = doc.getNumberOfPages();
