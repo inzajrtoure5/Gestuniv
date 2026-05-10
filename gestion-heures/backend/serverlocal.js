@@ -1,8 +1,3 @@
-process.on('uncaughtException', (err) => {
-  console.log('ERREUR FATALE:', err.message);
-  console.log(err.stack);
-});
-
 const express = require('express');
 const cors    = require('cors');
 require('dotenv').config();
@@ -18,6 +13,8 @@ app.use('/api/matieres',     require('./routes/matieres'));
 app.use('/api/heures',       require('./routes/heures'));
 app.use('/api/dashboard',    require('./routes/dashboard'));
 app.use('/api/attributions', require('./routes/attributions'));
+app.use('/api/parametres',   require('./routes/parametres'));
+app.use('/api/logs',         require('./routes/logs'));
 
 app.get('/', (req, res) => res.json({ message: 'API Gestion Heures OK' }));
 
