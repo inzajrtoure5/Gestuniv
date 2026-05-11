@@ -8,6 +8,7 @@ const LogsActions = () => {
   const [limit, setLimit] = useState(100);
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   const charger = useCallback(async (nextOffset = offset, nextLimit = limit) => {
     setLoading(true);
@@ -17,6 +18,7 @@ const LogsActions = () => {
       setTotal(r.data.total || 0);
       setLimit(r.data.limit || nextLimit);
       setOffset(r.data.offset || nextOffset);
+      setHasLoaded(true);
     } finally {
       setLoading(false);
     }
@@ -72,7 +74,7 @@ const LogsActions = () => {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {loading || !hasLoaded ? (
                 <tr>
                   <td style={{ ...styles.td, textAlign: 'center', color: '#666' }} colSpan={7}>
                     Chargement…
