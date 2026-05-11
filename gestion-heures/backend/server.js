@@ -20,6 +20,8 @@ app.use('/api/matieres',     require('./routes/matieres'));
 app.use('/api/heures',       require('./routes/heures'));
 app.use('/api/dashboard',    require('./routes/dashboard'));
 app.use('/api/attributions', require('./routes/attributions'));
+app.use('/api/parametres',   require('./routes/parametres'));
+app.use('/api/logs',         require('./routes/logs'));
 
 app.get('/api/health/db', async (req, res) => {
   try {
