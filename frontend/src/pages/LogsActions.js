@@ -61,46 +61,48 @@ const LogsActions = () => {
         </div>
 
         <div style={styles.section}>
-          <table style={styles.table}>
-            <thead>
-              <tr style={styles.thead}>
-                <th style={styles.th}>Date</th>
-                <th style={styles.th}>Utilisateur</th>
-                <th style={styles.th}>Rôle</th>
-                <th style={styles.th}>Action</th>
-                <th style={styles.th}>Table</th>
-                <th style={styles.th}>ID</th>
-                <th style={styles.th}>IP</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading || !hasLoaded ? (
-                <tr>
-                  <td style={{ ...styles.td, textAlign: 'center', color: '#666' }} colSpan={7}>
-                    Chargement…
-                  </td>
+          <div style={styles.tableWrap}>
+            <table style={styles.table}>
+              <thead>
+                <tr style={styles.thead}>
+                  <th style={styles.th}>Date</th>
+                  <th style={styles.th}>Utilisateur</th>
+                  <th style={styles.th}>Rôle</th>
+                  <th style={styles.th}>Action</th>
+                  <th style={styles.th}>Table</th>
+                  <th style={styles.th}>ID</th>
+                  <th style={styles.th}>IP</th>
                 </tr>
-              ) : rows.length === 0 ? (
-                <tr>
-                  <td style={{ ...styles.td, textAlign: 'center', color: '#999' }} colSpan={7}>
-                    Aucune donnée.
-                  </td>
-                </tr>
-              ) : (
-                rows.map((l, i) => (
-                  <tr key={l.id} style={i % 2 === 0 ? styles.trEven : {}}>
-                    <td style={styles.td}>{new Date(l.created_at).toLocaleString('fr-FR')}</td>
-                    <td style={styles.td}>{l.utilisateur || '-'}</td>
-                    <td style={styles.td}>{l.role || '-'}</td>
-                    <td style={styles.td}>{l.action}</td>
-                    <td style={styles.td}>{l.table_cible || '-'}</td>
-                    <td style={styles.td}>{l.enregistrement_id || '-'}</td>
-                    <td style={styles.td}>{l.ip_address || '-'}</td>
+              </thead>
+              <tbody>
+                {loading || !hasLoaded ? (
+                  <tr>
+                    <td style={{ ...styles.td, textAlign: 'center', color: '#666' }} colSpan={7}>
+                      Chargement…
+                    </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : rows.length === 0 ? (
+                  <tr>
+                    <td style={{ ...styles.td, textAlign: 'center', color: '#999' }} colSpan={7}>
+                      Aucune donnée.
+                    </td>
+                  </tr>
+                ) : (
+                  rows.map((l, i) => (
+                    <tr key={l.id} style={i % 2 === 0 ? styles.trEven : {}}>
+                      <td style={styles.td}>{new Date(l.created_at).toLocaleString('fr-FR')}</td>
+                      <td style={styles.td}>{l.utilisateur || '-'}</td>
+                      <td style={styles.td}>{l.role || '-'}</td>
+                      <td style={styles.td}>{l.action}</td>
+                      <td style={styles.td}>{l.table_cible || '-'}</td>
+                      <td style={styles.td}>{l.enregistrement_id || '-'}</td>
+                      <td style={styles.td}>{l.ip_address || '-'}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </AppLayout>
@@ -113,6 +115,7 @@ const styles = {
   titre: { color: '#1e3a5f', margin: 0 },
   btn: { background: '#1e3a5f', color: '#fff', border: 'none', borderRadius: '6px', padding: '8px 14px', cursor: 'pointer', fontSize: '13px' },
   section: { background: '#fff', borderRadius: '10px', padding: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' },
+  tableWrap: { width: '100%', overflowX: 'auto' },
   table: { width: '100%', borderCollapse: 'collapse' },
   thead: { background: '#f5f7fa' },
   th: { padding: '12px', textAlign: 'left', fontSize: '13px', color: '#555', fontWeight: '600' },
