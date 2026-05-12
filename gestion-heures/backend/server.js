@@ -36,26 +36,26 @@ app.get('/api/health/db', async (req, res) => {
   }
 });
 
-// Servir le frontend si le build existe (en local ou si déployé ensemble)
-const frontendBuild = path.join(__dirname, '..', '..', 'frontend', 'build');
+// Servir le frontend React — cherche dans ./public (copie du build)
+const frontendBuild = path.join(__dirname, 'public');
 const frontendExists = fs.existsSync(path.join(frontendBuild, 'index.html'));
 
 if (frontendExists) {
-  console.log('Frontend build trouvé, serving static files from:', frontendBuild);
+  console.log('Frontend build trouvé dans:', frontendBuild);
   app.use(express.static(frontendBuild));
   // SPA fallback : toute route non-API renvoie index.html
   app.get('*', (req, res) => {
     res.sendFile(path.join(frontendBuild, 'index.html'));
   });
 } else {
-  console.log('Frontend build non trouvé à:', frontendBuild);
-  console.log('Le frontend doit être déployé séparément (Vercel, Netlify, etc.)');
+  console.log('Frontend build non trouvé dans:', frontendBuild);
   app.get('/', (req, res) => res.json({ message: 'API Gestion Heures OK' }));
 }
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {
   console.log(`Serveur lancé sur http://localhost:${PORT}`);
+  console.log('Frontend servi:', frontendExists ? 'OUI' : 'NON');
   try {
     const conn = await pool.getConnection();
     conn.release();
