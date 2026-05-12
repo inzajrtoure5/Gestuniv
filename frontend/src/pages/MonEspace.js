@@ -1,17 +1,33 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
 import AppLayout from '../components/AppLayout';
 
+const STATUT_LABEL = {
+  en_attente_prof: { label: 'En attente de votre réponse', color: '#e65100', bg: '#fff3e0' },
+  acceptee_prof:   { label: 'Acceptée (en attente validation RH)', color: '#1565c0', bg: '#e3f2fd' },
+  refusee_prof:    { label: 'Refusée par vous', color: '#c62828', bg: '#fdecea' },
+  validee_rh:      { label: 'Validée par le RH', color: '#2e7d32', bg: '#e8f5e9' },
+};
+
 const MonEspace = () => {
   const { utilisateur } = useAuth();
-  const [heures, setHeures]   = useState([]);
-  const [stats, setStats]     = useState(null);
-  const [annees, setAnnees]   = useState([]);
-  const [anneeId, setAnneeId] = useState('');
+  const [heures, setHeures]             = useState([]);
+  const [stats, setStats]               = useState(null);
+  const [annees, setAnnees]             = useState([]);
+  const [anneeId, setAnneeId]           = useState('');
+  const [attributions, setAttributions] = useState([]);
+  const [loadingH, setLoadingH]         = useState(false);
+  const [loadingA, setLoadingA]         = useState(false);
 
+  // Modal refus
+  const [refusModal, setRefusModal]     = useState(null); // { id }
+  const [motifRefus, setMotifRefus]     = useState('');
+  const [actionMsg, setActionMsg]       = useState('');
+
+  // Chargement des années (une seule fois)
   useEffect(() => {
     api.get('/matieres/annees').then(r => {
       setAnnees(r.data);
@@ -20,14 +36,64 @@ const MonEspace = () => {
     });
   }, []);
 
-  useEffect(() => {
-    if (anneeId && utilisateur?.enseignant_id) {
-      api.get(`/heures?annee_id=${anneeId}&enseignant_id=${utilisateur.enseignant_id}`)
-        .then(r => setHeures(r.data));
-      api.get(`/enseignants/${utilisateur.enseignant_id}/heures?annee_id=${anneeId}`)
-        .then(r => setStats(r.data));
-    }
+  // Chargement des heures et stats (sans vider d'abord)
+  const chargerHeures = useCallback(() => {
+    if (!anneeId || !utilisateur?.enseignant_id) return;
+    setLoadingH(true);
+    Promise.all([
+      api.get(`/heures?annee_id=${anneeId}&enseignant_id=${utilisateur.enseignant_id}`),
+      api.get(`/enseignants/${utilisateur.enseignant_id}/heures?annee_id=${anneeId}`),
+    ]).then(([r1, r2]) => {
+      setHeures(r1.data);
+      setStats(r2.data);
+    }).finally(() => setLoadingH(false));
   }, [anneeId, utilisateur]);
+
+  // Chargement des attributions (sans vider d'abord)
+  const chargerAttributions = useCallback(() => {
+    if (!anneeId || !utilisateur?.enseignant_id) return;
+    setLoadingA(true);
+    api.get(`/attributions?annee_id=${anneeId}&enseignant_id=${utilisateur.enseignant_id}`)
+      .then(r => setAttributions(r.data))
+      .finally(() => setLoadingA(false));
+  }, [anneeId, utilisateur]);
+
+  useEffect(() => {
+    chargerHeures();
+    chargerAttributions();
+  }, [chargerHeures, chargerAttributions]);
+
+  // Accepter une attribution
+  const accepterAttribution = async (id) => {
+    try {
+      await api.patch(`/attributions/${id}/repondre`, { decision: 'accepter' });
+      setActionMsg('Attribution acceptée avec succès.');
+      chargerAttributions();
+    } catch (err) {
+      setActionMsg(err.response?.data?.message || 'Erreur lors de l\'acceptation.');
+    }
+    setTimeout(() => setActionMsg(''), 4000);
+  };
+
+  // Ouvrir modal de refus
+  const ouvrirRefus = (id) => {
+    setRefusModal({ id });
+    setMotifRefus('');
+  };
+
+  // Confirmer le refus
+  const confirmerRefus = async () => {
+    if (!refusModal) return;
+    try {
+      await api.patch(`/attributions/${refusModal.id}/repondre`, { decision: 'refuser', motif_refus: motifRefus });
+      setActionMsg('Attribution refusée.');
+      setRefusModal(null);
+      chargerAttributions();
+    } catch (err) {
+      setActionMsg(err.response?.data?.message || 'Erreur lors du refus.');
+    }
+    setTimeout(() => setActionMsg(''), 4000);
+  };
 
   const exportExcel = () => {
     const annee = annees.find((a) => String(a.id) === String(anneeId))?.libelle || 'annee';
@@ -113,7 +179,6 @@ const MonEspace = () => {
     y += 6;
 
     const rowH = 7;
-
     const headers = ['Date', 'Matière', 'Type', 'Durée', 'Salle', 'Statut'];
     const colWidths = [20, 70, 12, 14, 25, 25];
     const tableW = colWidths.reduce((s, w) => s + w, 0);
@@ -174,6 +239,9 @@ const MonEspace = () => {
     s === 'rejetee'   ? { background:'#fdecea', color:'#c62828' } :
                         { background:'#fff3e0', color:'#e65100' };
 
+  // Nombre d'attributions en attente de réponse
+  const nbEnAttente = attributions.filter(a => a.statut === 'en_attente_prof').length;
+
   return (
     <AppLayout
       title="Mon espace"
@@ -200,6 +268,85 @@ const MonEspace = () => {
           <h2 style={styles.titre}>Mon espace — {utilisateur?.prenom} {utilisateur?.nom}</h2>
         </div>
 
+        {/* Message de feedback */}
+        {actionMsg && (
+          <div style={styles.alertMsg}>{actionMsg}</div>
+        )}
+
+        {/* ===== SECTION ATTRIBUTIONS ===== */}
+        <div style={{ ...styles.section, marginBottom: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 style={styles.sectionTitre}>
+              Mes attributions
+              {nbEnAttente > 0 && (
+                <span style={styles.badgeAlert}>{nbEnAttente} en attente</span>
+              )}
+            </h3>
+            {loadingA && <span style={styles.loadingBadge}>⟳ Actualisation…</span>}
+          </div>
+
+          {attributions.length === 0 && !loadingA ? (
+            <p style={{ color: '#888', textAlign: 'center', padding: '20px' }}>
+              Aucune attribution pour cette année.
+            </p>
+          ) : (
+            <table style={styles.table}>
+              <thead>
+                <tr style={styles.thead}>
+                  <th style={styles.th}>Matière</th>
+                  <th style={styles.th}>Niveau</th>
+                  <th style={styles.th}>Filière</th>
+                  <th style={styles.th}>Semestre</th>
+                  <th style={styles.th}>Statut</th>
+                  <th style={styles.th}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {attributions.map((a, i) => {
+                  const s = STATUT_LABEL[a.statut] || { label: a.statut, color: '#333', bg: '#eee' };
+                  return (
+                    <tr key={a.id} style={i % 2 === 0 ? styles.trEven : {}}>
+                      <td style={styles.td}>{a.matiere}</td>
+                      <td style={styles.td}><span style={styles.badge}>{a.niveau}</span></td>
+                      <td style={styles.td}>{a.filiere}</td>
+                      <td style={styles.td}>{a.semestre}</td>
+                      <td style={styles.td}>
+                        <span style={{ ...styles.badge, background: s.bg, color: s.color }}>
+                          {s.label}
+                        </span>
+                        {a.motif_refus && (
+                          <div style={{ fontSize: '11px', color: '#c62828', marginTop: '4px' }}>
+                            Motif : {a.motif_refus}
+                          </div>
+                        )}
+                      </td>
+                      <td style={styles.td}>
+                        {a.statut === 'en_attente_prof' && (
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              style={styles.btnAccepter}
+                              onClick={() => accepterAttribution(a.id)}
+                            >
+                              ✓ Accepter
+                            </button>
+                            <button
+                              style={styles.btnRefuser}
+                              onClick={() => ouvrirRefus(a.id)}
+                            >
+                              ✗ Refuser
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* ===== STATS HEURES ===== */}
         {stats && (
           <div style={styles.cards}>
             <div style={{...styles.card, borderTop:'4px solid #1e3a5f'}}>
@@ -229,9 +376,13 @@ const MonEspace = () => {
           </div>
         )}
 
+        {/* ===== TABLEAU DES HEURES ===== */}
         <div style={styles.section}>
-          <h3 style={styles.sectionTitre}>Mes heures effectuées</h3>
-          {heures.length === 0 ? (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <h3 style={{ ...styles.sectionTitre, marginBottom: 0 }}>Mes heures effectuées</h3>
+            {loadingH && <span style={styles.loadingBadge}>⟳ Actualisation…</span>}
+          </div>
+          {heures.length === 0 && !loadingH ? (
             <p style={{color:'#888', textAlign:'center', padding:'20px'}}>Aucune heure enregistrée pour cette année.</p>
           ) : (
             <table style={styles.table}>
@@ -265,6 +416,29 @@ const MonEspace = () => {
           )}
         </div>
       </div>
+
+      {/* ===== MODAL REFUS ===== */}
+      {refusModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalBox}>
+            <h3 style={{ margin: '0 0 16px 0', color: '#c62828' }}>Refuser cette attribution</h3>
+            <p style={{ fontSize: '14px', color: '#555', marginBottom: '12px' }}>
+              Vous pouvez indiquer un motif (optionnel) :
+            </p>
+            <textarea
+              style={styles.textarea}
+              rows={4}
+              placeholder="Motif du refus (ex: conflit d'horaire, surcharge, …)"
+              value={motifRefus}
+              onChange={e => setMotifRefus(e.target.value)}
+            />
+            <div style={{ display: 'flex', gap: '12px', marginTop: '16px', justifyContent: 'flex-end' }}>
+              <button style={styles.btnCancel} onClick={() => setRefusModal(null)}>Annuler</button>
+              <button style={styles.btnRefuser} onClick={confirmerRefus}>Confirmer le refus</button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 };
@@ -287,6 +461,15 @@ const styles = {
   td:           { padding:'12px', fontSize:'13px', color:'#333', borderBottom:'1px solid #f0f0f0' },
   trEven:       { background:'#fafafa' },
   badge:        { background:'#e8f0fe', color:'#1e3a5f', padding:'3px 10px', borderRadius:'20px', fontSize:'12px' },
+  badgeAlert:   { background:'#e65100', color:'#fff', padding:'3px 10px', borderRadius:'20px', fontSize:'12px', marginLeft:'10px' },
+  loadingBadge: { background:'#f5f7fa', color:'#999', fontSize:'12px', padding:'4px 10px', borderRadius:'20px', border:'1px solid #e0e0e0' },
+  alertMsg:     { background:'#e8f5e9', color:'#2e7d32', padding:'12px 16px', borderRadius:'8px', marginBottom:'16px', fontSize:'14px' },
+  btnAccepter:  { background:'#e8f5e9', color:'#2e7d32', border:'1px solid #a5d6a7', borderRadius:'6px', padding:'5px 12px', cursor:'pointer', fontSize:'12px', fontWeight:'600' },
+  btnRefuser:   { background:'#fdecea', color:'#c62828', border:'1px solid #ef9a9a', borderRadius:'6px', padding:'5px 12px', cursor:'pointer', fontSize:'12px', fontWeight:'600' },
+  btnCancel:    { background:'#f5f5f5', color:'#555', border:'1px solid #ddd', borderRadius:'6px', padding:'8px 16px', cursor:'pointer', fontSize:'13px' },
+  modalOverlay: { position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 },
+  modalBox:     { background:'#fff', borderRadius:'12px', padding:'28px', minWidth:'420px', maxWidth:'540px', boxShadow:'0 8px 32px rgba(0,0,0,0.18)' },
+  textarea:     { width:'100%', padding:'10px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'14px', boxSizing:'border-box', resize:'vertical' },
 };
 
 export default MonEspace;

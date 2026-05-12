@@ -1,6 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import api from '../services/api';
 import AppLayout from '../components/AppLayout';
+
+const STATUT_LABEL = {
+  en_attente_prof: { label: 'En attente prof',    color: '#e65100', bg: '#fff3e0' },
+  acceptee_prof:   { label: 'Acceptée par prof',  color: '#1565c0', bg: '#e3f2fd' },
+  refusee_prof:    { label: 'Refusée par prof',   color: '#c62828', bg: '#fdecea' },
+  validee_rh:      { label: 'Validée RH',         color: '#2e7d32', bg: '#e8f5e9' },
+};
 
 const Attributions = () => {
   const [attributions, setAttributions] = useState([]);
@@ -9,7 +16,7 @@ const Attributions = () => {
   const [annees, setAnnees]             = useState([]);
   const [anneeId, setAnneeId]           = useState('');
   const [showForm, setShowForm]         = useState(false);
-  const [message, setMessage]           = useState('');
+  const [message, setMessage]           = useState({ text: '', type: 'success' });
   const [form, setForm]                 = useState({ enseignant_id:'', matiere_id:'', annee_id:'', semestre:'S1' });
   const [query, setQuery]               = useState('');
   const [sortKey, setSortKey]           = useState('enseignant');
@@ -27,34 +34,40 @@ const Attributions = () => {
     api.get('/enseignants').then(r => setEns(r.data));
   }, []);
 
-  useEffect(() => {
-    if (anneeId) {
-      setLoading(true);
-      Promise.all([
-        api.get(`/matieres?annee_id=${anneeId}`),
-        api.get(`/attributions?annee_id=${anneeId}`),
-      ])
-        .then(([m, a]) => {
-          setMat(m.data);
-          setAttributions(a.data);
-        })
-        .finally(() => setLoading(false));
-    }
+  // Chargement sans vider d'abord (correction du clignotement)
+  const charger = useCallback(() => {
+    if (!anneeId) return;
+    setLoading(true);
+    Promise.all([
+      api.get(`/matieres?annee_id=${anneeId}`),
+      api.get(`/attributions?annee_id=${anneeId}`),
+    ])
+      .then(([m, a]) => {
+        setMat(m.data);
+        setAttributions(a.data);
+      })
+      .finally(() => setLoading(false));
   }, [anneeId]);
+
+  useEffect(() => {
+    charger();
+  }, [charger]);
+
+  const afficherMsg = (text, type = 'success') => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage({ text: '', type: 'success' }), 4000);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       setLoading(true);
       await api.post('/attributions', form);
-      setMessage('Attribution créée !');
+      afficherMsg('Attribution créée ! Le professeur doit maintenant l\'accepter.');
       setShowForm(false);
-      api
-        .get(`/attributions?annee_id=${anneeId}`)
-        .then(r => setAttributions(r.data))
-        .finally(() => setLoading(false));
+      charger();
     } catch (err) {
-      setMessage(err.response?.data?.message || 'Erreur.');
+      afficherMsg(err.response?.data?.message || 'Erreur.', 'error');
       setLoading(false);
     }
   };
@@ -63,17 +76,27 @@ const Attributions = () => {
     if (window.confirm('Supprimer cette attribution ?')) {
       setLoading(true);
       await api.delete(`/attributions/${id}`);
-      api
-        .get(`/attributions?annee_id=${anneeId}`)
-        .then(r => setAttributions(r.data))
-        .finally(() => setLoading(false));
+      charger();
+    }
+  };
+
+  const handleValiderRH = async (id) => {
+    if (!window.confirm('Valider définitivement cette attribution (confirmer que les cours ont été effectués) ?')) return;
+    try {
+      setLoading(true);
+      await api.patch(`/attributions/${id}/valider-rh`);
+      afficherMsg('Attribution validée par le RH.');
+      charger();
+    } catch (err) {
+      afficherMsg(err.response?.data?.message || 'Erreur de validation.', 'error');
+      setLoading(false);
     }
   };
 
   const filtered = attributions.filter((a) => {
     const q = query.trim().toLowerCase();
     if (!q) return true;
-    return [a.enseignant, a.matiere, a.niveau, a.filiere, a.semestre]
+    return [a.enseignant, a.matiere, a.niveau, a.filiere, a.semestre, a.statut]
       .filter(Boolean)
       .some((v) => String(v).toLowerCase().includes(q));
   });
@@ -94,17 +117,19 @@ const Attributions = () => {
     const dir = sortDir === 'asc' ? 1 : -1;
     const va = a?.[sortKey];
     const vb = b?.[sortKey];
-
     if (va == null && vb == null) return 0;
     if (va == null) return -1 * dir;
     if (vb == null) return 1 * dir;
-
     return String(va).localeCompare(String(vb), 'fr', { numeric: true, sensitivity: 'base' }) * dir;
   });
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const paged = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  const msgStyle = message.type === 'error'
+    ? { background: '#fdecea', color: '#c62828', padding: '10px', borderRadius: '6px', marginBottom: '16px' }
+    : { background: '#e8f5e9', color: '#2e7d32', padding: '10px', borderRadius: '6px', marginBottom: '16px' };
 
   return (
     <AppLayout
@@ -122,7 +147,7 @@ const Attributions = () => {
             style={styles.search}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Rechercher (enseignant, matière, filière…)"
+            placeholder="Rechercher (enseignant, matière, filière, statut…)"
           />
           <button style={styles.btnAdd} onClick={() => setShowForm(!showForm)} disabled={loading}>
             + Ajouter
@@ -133,8 +158,9 @@ const Attributions = () => {
       <div style={styles.container}>
         <div style={styles.header}>
           <h2 style={styles.titre}>Attributions</h2>
+          {loading && <span style={styles.loadingBadge}>⟳ Chargement…</span>}
         </div>
-        {message && <div style={styles.msg}>{message}</div>}
+        {message.text && <div style={msgStyle}>{message.text}</div>}
         {showForm && (
           <form onSubmit={handleSubmit} style={styles.form}>
             <div style={styles.grid}>
@@ -173,35 +199,54 @@ const Attributions = () => {
               <th style={{ ...styles.th, cursor: 'pointer' }} onClick={() => toggleSort('niveau')}>Niveau</th>
               <th style={{ ...styles.th, cursor: 'pointer' }} onClick={() => toggleSort('filiere')}>Filière</th>
               <th style={{ ...styles.th, cursor: 'pointer' }} onClick={() => toggleSort('semestre')}>Semestre</th>
+              <th style={{ ...styles.th, cursor: 'pointer' }} onClick={() => toggleSort('statut')}>Statut prof</th>
               <th style={styles.th}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {loading ? (
+            {paged.length === 0 ? (
               <tr>
-                <td style={{ ...styles.td, textAlign: 'center', color: '#666' }} colSpan={6}>
-                  Chargement…
-                </td>
-              </tr>
-            ) : paged.length === 0 ? (
-              <tr>
-                <td style={{ ...styles.td, textAlign: 'center', color: '#999' }} colSpan={6}>
-                  Aucune donnée.
+                <td style={{ ...styles.td, textAlign: 'center', color: loading ? '#999' : '#666' }} colSpan={7}>
+                  {loading ? 'Chargement…' : 'Aucune donnée.'}
                 </td>
               </tr>
             ) : (
-              paged.map((a, i) => (
-                <tr key={a.id} style={i%2===0?styles.trEven:{}}>
-                  <td style={styles.td}>{a.enseignant}</td>
-                  <td style={styles.td}>{a.matiere}</td>
-                  <td style={styles.td}><span style={styles.badge}>{a.niveau}</span></td>
-                  <td style={styles.td}>{a.filiere}</td>
-                  <td style={styles.td}>{a.semestre}</td>
-                  <td style={styles.td}>
-                    <button style={styles.btnDel} onClick={() => handleDelete(a.id)} disabled={loading}>Supprimer</button>
-                  </td>
-                </tr>
-              ))
+              paged.map((a, i) => {
+                const s = STATUT_LABEL[a.statut] || { label: a.statut || '—', color: '#555', bg: '#eee' };
+                return (
+                  <tr key={a.id} style={i%2===0?styles.trEven:{}}>
+                    <td style={styles.td}>{a.enseignant}</td>
+                    <td style={styles.td}>{a.matiere}</td>
+                    <td style={styles.td}><span style={styles.badge}>{a.niveau}</span></td>
+                    <td style={styles.td}>{a.filiere}</td>
+                    <td style={styles.td}>{a.semestre}</td>
+                    <td style={styles.td}>
+                      <span style={{ ...styles.badge, background: s.bg, color: s.color }}>
+                        {s.label}
+                      </span>
+                      {a.motif_refus && (
+                        <div style={{ fontSize: '11px', color: '#c62828', marginTop: '4px' }}>
+                          Motif : {a.motif_refus}
+                        </div>
+                      )}
+                    </td>
+                    <td style={styles.td}>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        {a.statut === 'acceptee_prof' && (
+                          <button
+                            style={styles.btnValider}
+                            onClick={() => handleValiderRH(a.id)}
+                            disabled={loading}
+                          >
+                            ✓ Valider RH
+                          </button>
+                        )}
+                        <button style={styles.btnDel} onClick={() => handleDelete(a.id)} disabled={loading}>Supprimer</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -224,25 +269,26 @@ const Attributions = () => {
 };
 
 const styles = {
-  container: { padding:'24px', maxWidth:'1200px', margin:'0 auto' },
-  header:    { display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' },
-  titre:     { color:'#1e3a5f', margin:0 },
-  select:    { padding:'8px 12px', borderRadius:'6px', border:'1px solid #ddd', fontSize:'14px' },
-  search:    { padding:'8px 12px', borderRadius:'6px', border:'1px solid #ddd', fontSize:'14px', minWidth:'320px' },
-  btnAdd:    { background:'#1e3a5f', color:'#fff', border:'none', borderRadius:'6px', padding:'8px 18px', cursor:'pointer', fontSize:'14px' },
-  btnCancel: { background:'#ccc', color:'#333', border:'none', borderRadius:'6px', padding:'8px 18px', cursor:'pointer', fontSize:'14px' },
-  btnDel:    { background:'#fdecea', color:'#e74c3c', border:'none', borderRadius:'4px', padding:'4px 10px', cursor:'pointer', fontSize:'12px' },
-  msg:       { background:'#e8f5e9', color:'#2e7d32', padding:'10px', borderRadius:'6px', marginBottom:'16px' },
-  form:      { background:'#fff', padding:'20px', borderRadius:'10px', boxShadow:'0 2px 8px rgba(0,0,0,0.08)', marginBottom:'24px' },
-  grid:      { display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'16px' },
-  label:     { display:'block', fontSize:'13px', color:'#555', marginBottom:'4px' },
-  input:     { width:'100%', padding:'8px', borderRadius:'6px', border:'1px solid #ddd', fontSize:'14px', boxSizing:'border-box' },
-  table:     { width:'100%', borderCollapse:'collapse', background:'#fff', borderRadius:'10px', overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,0.08)' },
-  thead:     { background:'#1e3a5f' },
-  th:        { padding:'12px', textAlign:'left', fontSize:'13px', color:'#fff', fontWeight:'500' },
-  td:        { padding:'12px', fontSize:'13px', color:'#333', borderBottom:'1px solid #f0f0f0' },
-  trEven:    { background:'#fafafa' },
-  badge:     { background:'#e8f0fe', color:'#1e3a5f', padding:'3px 10px', borderRadius:'20px', fontSize:'12px' },
+  container:   { padding:'24px', maxWidth:'1200px', margin:'0 auto' },
+  header:      { display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' },
+  titre:       { color:'#1e3a5f', margin:0 },
+  select:      { padding:'8px 12px', borderRadius:'6px', border:'1px solid #ddd', fontSize:'14px' },
+  search:      { padding:'8px 12px', borderRadius:'6px', border:'1px solid #ddd', fontSize:'14px', minWidth:'320px' },
+  btnAdd:      { background:'#1e3a5f', color:'#fff', border:'none', borderRadius:'6px', padding:'8px 18px', cursor:'pointer', fontSize:'14px' },
+  btnCancel:   { background:'#ccc', color:'#333', border:'none', borderRadius:'6px', padding:'8px 18px', cursor:'pointer', fontSize:'14px' },
+  btnDel:      { background:'#fdecea', color:'#e74c3c', border:'none', borderRadius:'4px', padding:'4px 10px', cursor:'pointer', fontSize:'12px' },
+  btnValider:  { background:'#e8f5e9', color:'#2e7d32', border:'1px solid #a5d6a7', borderRadius:'4px', padding:'4px 10px', cursor:'pointer', fontSize:'12px', fontWeight:'600' },
+  loadingBadge:{ background:'#f5f7fa', color:'#999', fontSize:'12px', padding:'4px 10px', borderRadius:'20px', border:'1px solid #e0e0e0' },
+  form:        { background:'#fff', padding:'20px', borderRadius:'10px', boxShadow:'0 2px 8px rgba(0,0,0,0.08)', marginBottom:'24px' },
+  grid:        { display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'16px' },
+  label:       { display:'block', fontSize:'13px', color:'#555', marginBottom:'4px' },
+  input:       { width:'100%', padding:'8px', borderRadius:'6px', border:'1px solid #ddd', fontSize:'14px', boxSizing:'border-box' },
+  table:       { width:'100%', borderCollapse:'collapse', background:'#fff', borderRadius:'10px', overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,0.08)' },
+  thead:       { background:'#1e3a5f' },
+  th:          { padding:'12px', textAlign:'left', fontSize:'13px', color:'#fff', fontWeight:'500' },
+  td:          { padding:'12px', fontSize:'13px', color:'#333', borderBottom:'1px solid #f0f0f0' },
+  trEven:      { background:'#fafafa' },
+  badge:       { background:'#e8f0fe', color:'#1e3a5f', padding:'3px 10px', borderRadius:'20px', fontSize:'12px' },
 };
 
 export default Attributions;

@@ -77,6 +77,8 @@ CREATE TABLE IF NOT EXISTS `attributions` (
   `matiere_id` int(10) UNSIGNED NOT NULL,
   `annee_id` int(10) UNSIGNED NOT NULL,
   `semestre` enum('S1','S2','Annuel') NOT NULL DEFAULT 'Annuel',
+  `statut` enum('en_attente_prof','acceptee_prof','refusee_prof','validee_rh') NOT NULL DEFAULT 'en_attente_prof',
+  `motif_refus` TEXT DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_attribution` (`enseignant_id`,`matiere_id`,`annee_id`),
