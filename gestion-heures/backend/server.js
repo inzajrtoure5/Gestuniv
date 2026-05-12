@@ -6,6 +6,7 @@ process.on('uncaughtException', (err) => {
 const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
+const fs      = require('fs');
 require('dotenv').config();
 
 const pool = require('./config/db');
@@ -35,15 +36,22 @@ app.get('/api/health/db', async (req, res) => {
   }
 });
 
-// Servir le frontend React (fichiers statiques du build)
+// Servir le frontend si le build existe (en local ou si déployé ensemble)
 const frontendBuild = path.join(__dirname, '..', '..', 'frontend', 'build');
-app.use(express.static(frontendBuild));
+const frontendExists = fs.existsSync(path.join(frontendBuild, 'index.html'));
 
-// SPA fallback : toute route non-API renvoie index.html
-// Ceci permet le rechargement de page sur /dashboard, /mon-espace, etc.
-app.get('*', (req, res) => {
-  res.sendFile(path.join(frontendBuild, 'index.html'));
-});
+if (frontendExists) {
+  console.log('Frontend build trouvé, serving static files from:', frontendBuild);
+  app.use(express.static(frontendBuild));
+  // SPA fallback : toute route non-API renvoie index.html
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendBuild, 'index.html'));
+  });
+} else {
+  console.log('Frontend build non trouvé à:', frontendBuild);
+  console.log('Le frontend doit être déployé séparément (Vercel, Netlify, etc.)');
+  app.get('/', (req, res) => res.json({ message: 'API Gestion Heures OK' }));
+}
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {
