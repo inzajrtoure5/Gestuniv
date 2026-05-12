@@ -22,7 +22,7 @@ const Attributions = () => {
   const [sortKey, setSortKey]           = useState('enseignant');
   const [sortDir, setSortDir]           = useState('asc');
   const [page, setPage]                 = useState(1);
-  const [loading, setLoading]           = useState(false);
+  const [loading, setLoading]           = useState(true);
   const pageSize = 10;
 
   useEffect(() => {

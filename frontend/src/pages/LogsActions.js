@@ -7,7 +7,7 @@ const LogsActions = () => {
   const [total, setTotal] = useState(0);
   const [limit, setLimit] = useState(100);
   const [offset, setOffset] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
 
   const charger = useCallback(async (nextOffset = offset, nextLimit = limit) => {

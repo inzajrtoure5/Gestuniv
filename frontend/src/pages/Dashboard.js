@@ -30,7 +30,7 @@ const Dashboard = () => {
   const [comptaTotaux, setComptaTotaux] = useState(null);
   const [anneeId, setAnneeId] = useState('');
   const [annees, setAnnees]   = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     api.get('/matieres/annees').then(res => {

@@ -26,7 +26,7 @@ const RapportComptabilite = () => {
   const [lignes, setLignes] = useState([]);
   const [totaux, setTotaux] = useState({});
   const [mensuel, setMensuel] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);

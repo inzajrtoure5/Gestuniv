@@ -10,7 +10,7 @@ const Matieres = () => {
   const [showForm, setShowForm]   = useState(false);
   const [message, setMessage]     = useState('');
   const [form, setForm]           = useState({ intitule:'', filiere:'', niveau:'L1', volume_cm_prevu:0, volume_td_prevu:0, volume_tp_prevu:0, departement_id:'', annee_id:'' });
-  const [loading, setLoading]     = useState(false);
+  const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
     api.get('/matieres/annees').then(r => {

@@ -15,7 +15,7 @@ const Heures = () => {
   const [showForm, setShowForm]   = useState(false);
   const [message, setMessage]     = useState('');
   const [form, setForm]           = useState({ attribution_id:'', date_cours:'', type_heure:'CM', duree:1, salle:'', observations:'' });
-  const [loading, setLoading]     = useState(false);
+  const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
     api.get('/matieres/annees').then(r => {

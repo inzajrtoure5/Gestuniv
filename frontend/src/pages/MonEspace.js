@@ -19,8 +19,8 @@ const MonEspace = () => {
   const [annees, setAnnees]             = useState([]);
   const [anneeId, setAnneeId]           = useState('');
   const [attributions, setAttributions] = useState([]);
-  const [loadingH, setLoadingH]         = useState(false);
-  const [loadingA, setLoadingA]         = useState(false);
+  const [loadingH, setLoadingH]         = useState(true);
+  const [loadingA, setLoadingA]         = useState(true);
 
   // Modal refus
   const [refusModal, setRefusModal]     = useState(null); // { id }
