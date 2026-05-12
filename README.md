@@ -1,107 +1,103 @@
-# GestUniv — Gestion des heures universitaires
-
-Application web de gestion des heures d’enseignement (saisie, validation, statistiques, rapports comptables, exports) avec gestion des rôles.
-
-## Stack
-
-- **Frontend**: React, React Router, TailwindCSS, Recharts, Axios, jsPDF, xlsx
-- **Backend**: Node.js, Express, JWT
-- **Base de données**: MySQL (mysql2)
-
-## Structure du dépôt
-
-- `frontend/` — application React
-- `gestion-heures/backend/` — API Express
-
-## Rôles
-
-- **admin**: gestion utilisateurs, paramètres, logs, supervision
-- **rh**: enseignants, matières, attributions, heures, rapports
-- **enseignant**: accès à `Mon espace` (heures + exports)
+# GestUniv — Gestion des heures enseignants
 
 ## Prérequis
 
-- Node.js (LTS recommandé)
-- MySQL / MariaDB
+- **Node.js** v18+ (https://nodejs.org)
+- **XAMPP** avec MySQL/MariaDB (https://www.apachefriends.org)
 
-## Configuration backend
+> **Note :** Les dépendances (node_modules) sont déjà incluses dans le dossier. Vous n'avez pas besoin de faire `npm install`.
 
-Créer un fichier `.env` dans `gestion-heures/backend/`.
+## Installation en local (étape par étape)
 
-Variables attendues:
+### 1. Importer la base de données
 
-- `DB_HOST`
-- `DB_USER`
-- `DB_PASSWORD`
-- `DB_NAME`
-- `JWT_SECRET`
-- `JWT_EXPIRE` (ex: `7d`)
+1. Lancer **XAMPP** → démarrer **Apache** et **MySQL**
+2. Ouvrir **phpMyAdmin** : http://localhost/phpmyadmin
+3. Créer une nouvelle base de données nommée `gestion_heures`
+4. Cliquer sur la base `gestion_heures` → **Importer** → choisir le fichier `gestuniv.sql` → **Exécuter**
 
-## Démarrage en local
+### 2. Lancer le serveur backend
 
-### 1) Backend
-
-Dans `gestion-heures/backend`:
+Ouvrir un terminal dans le dossier du projet :
 
 ```bash
-npm install
-npm run dev
+cd gestion-heures/backend
+node serverlocal.js
 ```
 
-L’API démarre par défaut sur `http://localhost:5000`.
+Le serveur démarre sur http://localhost:5000
 
-### 2) Frontend
+> Si votre MySQL a un mot de passe, modifiez `DB_PASSWORD` dans le fichier `.env.local` du dossier `gestion-heures/backend`.
 
-Dans `frontend`:
+### 3. Lancer le frontend
+
+Ouvrir un **autre terminal** :
 
 ```bash
-npm install
+cd frontend
 npm start
 ```
 
-Le frontend démarre sur `http://localhost:3000`.
+Le frontend démarre sur http://localhost:3000
 
-> Note: le frontend appelle l’API via `frontend/src/services/api.js` (baseURL actuellement configurée sur `http://localhost:5000/api`).
+---
 
-## Import de la base (données)
+## Comptes de test
 
-Un dump SQL est fourni dans le dépôt (ex: `gestuniv.sql`).
+| Rôle | Email | Mot de passe |
+|------|-------|--------------|
+| Admin | admin@gestuniv.ci | Admin@123 |
+| RH | rh@gestuniv.ci | Admin@123 |
+| Enseignant | inza5@gmail.com | 1234567 |
+| Enseignant | AYIKPAJEAN@gmail.com | 1234567 |
 
-Importer dans MySQL:
+---
 
-```bash
-mysql -u root -p gestuniv < gestuniv.sql
+## Fonctionnalités principales
+
+### Gestion des attributions
+
+Le système d'attribution de matières suit un workflow de validation :
+
+1. **Le RH/Admin crée une attribution** → statut : "En attente prof"
+2. **Le professeur accepte ou refuse** depuis son espace ("Mon espace") → statut : "Acceptée par prof" ou "Refusée par prof" (avec motif optionnel)
+3. **Le RH valide** l'attribution acceptée → statut : "Validée RH"
+
+### Autres fonctionnalités
+
+- Gestion des enseignants (CRUD)
+- Gestion des matières par année académique
+- Saisie et validation des heures effectuées
+- Calcul automatique des heures équivalentes (coefficients CM/TD/TP)
+- Calcul des heures complémentaires
+- Tableau de bord avec statistiques
+- Rapport de comptabilité détaillé
+- Export PDF et Excel
+- Gestion des utilisateurs et rôles
+- Logs d'actions
+
+---
+
+## Structure du projet
+
 ```
-
-Sous Windows PowerShell (si la redirection `<` pose problème):
-
-```powershell
-Get-Content .\gestuniv.sql | mysql -u root -p gestuniv
+GESTUNIV_CL/
+├── frontend/                # Application React (interface utilisateur)
+│   ├── src/
+│   │   ├── components/      # Composants réutilisables (AppLayout, Navbar, PrivateRoute)
+│   │   ├── context/         # Contexte d'authentification
+│   │   ├── pages/           # Pages de l'application
+│   │   └── services/        # Configuration API (axios)
+│   └── public/
+├── gestion-heures/
+│   └── backend/             # API Node.js/Express
+│       ├── config/          # Configuration base de données
+│       ├── controllers/     # Logique métier
+│       ├── middleware/       # Authentification JWT, logs
+│       ├── routes/          # Routes API
+│       ├── scripts/         # Scripts de migration
+│       ├── server.js        # Serveur production (Railway)
+│       └── serverlocal.js   # Serveur local (XAMPP)
+├── gestuniv.sql             # Base de données complète (à importer dans phpMyAdmin)
+└── README.md
 ```
-
-## Fonctionnalités clés
-
-- Saisie & validation des heures (statuts: `en_attente`, `validee`, `rejetee`)
-- Calcul des **heures équivalentes** via coefficients CM/TD/TP
-- Calcul des heures normales vs complémentaires (dépassement contrat)
-- Dashboard (KPI + graphiques)
-- Rapports: Paiement, Comptabilité, Rapport comptabilité (drill-down)
-- Exports **Excel** (`xlsx`) et **PDF** (`jsPDF`) avec en-tête/pied de page
-- Logs d’actions (admin)
-
-## Déploiement (recommandation)
-
-- **Backend**: Render (Web Service)
-  - Root Directory: `gestion-heures/backend`
-  - Build: `npm install`
-  - Start: `npm start`
-  - Variables d’environnement: mêmes variables que `.env`
-- **Frontend**: Netlify (Static)
-  - Base directory: `frontend`
-  - Build: `npm run build`
-  - Publish: `build`
-  - Variable: `REACT_APP_API_URL=https://<ton-backend>/api` (si tu adaptes `api.js` pour utiliser cette variable)
-
-## Licence
-
-Projet académique / démonstration.

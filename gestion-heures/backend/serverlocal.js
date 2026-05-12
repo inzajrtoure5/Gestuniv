@@ -1,6 +1,7 @@
 const express = require('express');
 const cors    = require('cors');
-require('dotenv').config();
+const path    = require('path');
+require('dotenv').config({ path: '.env.local' });
 
 const app = express();
 
@@ -16,7 +17,15 @@ app.use('/api/attributions', require('./routes/attributions'));
 app.use('/api/parametres',   require('./routes/parametres'));
 app.use('/api/logs',         require('./routes/logs'));
 
-app.get('/', (req, res) => res.json({ message: 'API Gestion Heures OK' }));
+// Servir le frontend React (fichiers statiques du build)
+const frontendBuild = path.join(__dirname, '..', '..', 'frontend', 'build');
+app.use(express.static(frontendBuild));
+
+// SPA fallback : toute route non-API renvoie index.html
+// Ceci permet le rechargement de page sur /dashboard, /mon-espace, etc.
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendBuild, 'index.html'));
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Serveur lancé sur http://localhost:${PORT}`));

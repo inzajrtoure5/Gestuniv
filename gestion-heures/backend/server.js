@@ -5,6 +5,7 @@ process.on('uncaughtException', (err) => {
 
 const express = require('express');
 const cors    = require('cors');
+const path    = require('path');
 require('dotenv').config();
 
 const pool = require('./config/db');
@@ -34,7 +35,15 @@ app.get('/api/health/db', async (req, res) => {
   }
 });
 
-app.get('/', (req, res) => res.json({ message: 'API Gestion Heures OK' }));
+// Servir le frontend React (fichiers statiques du build)
+const frontendBuild = path.join(__dirname, '..', '..', 'frontend', 'build');
+app.use(express.static(frontendBuild));
+
+// SPA fallback : toute route non-API renvoie index.html
+// Ceci permet le rechargement de page sur /dashboard, /mon-espace, etc.
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendBuild, 'index.html'));
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {
