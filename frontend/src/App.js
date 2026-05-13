@@ -14,6 +14,7 @@ import Parametres from './pages/Parametres';
 import Comptabilite from './pages/Comptabilite';
 import LogsActions from './pages/LogsActions';
 import RapportComptabilite from './pages/RapportComptabilite';
+import VideoPresentation from './pages/VideoPresentation';
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
           <Route path="/logs" element={<PrivateRoute roles={['admin']}><LogsActions /></PrivateRoute>} />
           <Route path="/mon-espace" element={<PrivateRoute roles={['enseignant']}><MonEspace /></PrivateRoute>} />
           <Route path="/parametres" element={<PrivateRoute roles={['admin']}><Parametres /></PrivateRoute>} />
+          <Route path="/video-presentation" element={<VideoPresentation />} />
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
       </BrowserRouter>

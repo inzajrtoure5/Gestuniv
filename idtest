@@ -1,8 +1,21 @@
+==============================
+  COMPTES DE TEST - GestUniv
+==============================
+
+SITE EN LIGNE : https://gestuniv-frontend.onrender.com
+
+--- ADMINISTRATEUR ---
 Email : admin@gestuniv.ci
 Mot de passe : Admin@123
 
+--- SERVICE RH ---
+Email : rh@gestuniv.ci
+Mot de passe : Admin@123
 
-rh@gestuniv.ci / Admin@123 (à tester)
+--- ENSEIGNANT 1 (TOURE INZA) ---
+Email : inza5@gmail.com
+Mot de passe : 1234567
 
-
-inza5@gmail.com /1234567 ou AYIKPAJEAN@gmail.com
+--- ENSEIGNANT 2 (AYIKPA JEAN) ---
+Email : AYIKPAJEAN@gmail.com
+Mot de passe : 1234567

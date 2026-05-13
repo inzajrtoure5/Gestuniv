@@ -1,48 +1,10 @@
 # GestUniv — Gestion des heures enseignants
 
-## Prérequis
+## Accès en Ligne (site déployé)
 
-- **Node.js** v18+ (https://nodejs.org)
-- **XAMPP** avec MySQL/MariaDB (https://www.apachefriends.org)
+**URL : https://gestuniv-frontend.onrender.com**
 
-> **Note :** Les dépendances (node_modules) sont déjà incluses dans le dossier. Vous n'avez pas besoin de faire `npm install`.
-
-## Installation en local (étape par étape)
-
-### 1. Importer la base de données
-
-1. Lancer **XAMPP** → démarrer **Apache** et **MySQL**
-2. Ouvrir **phpMyAdmin** : http://localhost/phpmyadmin
-3. Créer une nouvelle base de données nommée `gestion_heures`
-4. Cliquer sur la base `gestion_heures` → **Importer** → choisir le fichier `gestuniv.sql` → **Exécuter**
-
-### 2. Lancer le serveur backend
-
-Ouvrir un terminal dans le dossier du projet :
-
-```bash
-cd gestion-heures/backend
-node serverlocal.js
-```
-
-Le serveur démarre sur http://localhost:5000
-
-> Si votre MySQL a un mot de passe, modifiez `DB_PASSWORD` dans le fichier `.env.local` du dossier `gestion-heures/backend`.
-
-### 3. Lancer le frontend
-
-Ouvrir un **autre terminal** :
-
-```bash
-cd frontend
-npm start
-```
-
-Le frontend démarre sur http://localhost:3000
-
----
-
-## Comptes de test
+Les comptes de test sont dans le fichier `idtest` à la racine du projet.
 
 | Rôle | Email | Mot de passe |
 |------|-------|--------------|
@@ -53,51 +15,64 @@ Le frontend démarre sur http://localhost:3000
 
 ---
 
-## Fonctionnalités principales
+## Installation en Local
 
-### Gestion des attributions
+### Prérequis
 
-Le système d'attribution de matières suit un workflow de validation :
+- **Node.js** v18+ (https://nodejs.org)
+- **XAMPP** avec MySQL/MariaDB (https://www.apachefriends.org)
 
-1. **Le RH/Admin crée une attribution** → statut : "En attente prof"
-2. **Le professeur accepte ou refuse** depuis son espace ("Mon espace") → statut : "Acceptée par prof" ou "Refusée par prof" (avec motif optionnel)
-3. **Le RH valide** l'attribution acceptée → statut : "Validée RH"
+> **Note :** Les dépendances (node_modules) sont déjà incluses. Pas besoin de `npm install`.
 
-### Autres fonctionnalités
+### 1. Importer la base de données
 
-- Gestion des enseignants (CRUD)
-- Gestion des matières par année académique
-- Saisie et validation des heures effectuées
-- Calcul automatique des heures équivalentes (coefficients CM/TD/TP)
-- Calcul des heures complémentaires
-- Tableau de bord avec statistiques
-- Rapport de comptabilité détaillé
-- Export PDF et Excel
-- Gestion des utilisateurs et rôles
-- Logs d'actions
+1. Lancer **XAMPP** → démarrer **Apache** et **MySQL**
+2. Ouvrir **phpMyAdmin** : http://localhost/phpmyadmin
+3. Créer une base de données nommée `gestion_heures`
+4. Cliquer sur la base `gestion_heures` → **Importer** → choisir `gestuniv.sql` → **Exécuter**
+
+### 2. Lancer le serveur backend
+
+```bash
+cd gestion-heures/backend
+node serverlocal.js
+```
+
+Le serveur démarre sur http://localhost:5000
+
+> Si votre MySQL a un mot de passe, modifiez `DB_PASSWORD` dans `.env.local`
+
+### 3. Lancer le frontend
+
+```bash
+cd frontend
+npm start
+```
+
+Le frontend démarre sur http://localhost:3000
+
+Se connecter avec les comptes listés ci-dessus ou dans le fichier `idtest`.
 
 ---
 
-## Structure du projet
+## Fonctionnalités principales
 
-```
-GESTUNIV_CL/
-├── frontend/                # Application React (interface utilisateur)
-│   ├── src/
-│   │   ├── components/      # Composants réutilisables (AppLayout, Navbar, PrivateRoute)
-│   │   ├── context/         # Contexte d'authentification
-│   │   ├── pages/           # Pages de l'application
-│   │   └── services/        # Configuration API (axios)
-│   └── public/
-├── gestion-heures/
-│   └── backend/             # API Node.js/Express
-│       ├── config/          # Configuration base de données
-│       ├── controllers/     # Logique métier
-│       ├── middleware/       # Authentification JWT, logs
-│       ├── routes/          # Routes API
-│       ├── scripts/         # Scripts de migration
-│       ├── server.js        # Serveur production (Railway)
-│       └── serverlocal.js   # Serveur local (XAMPP)
-├── gestuniv.sql             # Base de données complète (à importer dans phpMyAdmin)
-└── README.md
-```
+- Gestion des enseignants, matières et attributions
+- **Workflow d'attribution** : le RH attribue → l'enseignant accepte/refuse → le RH valide
+- Saisie et validation des heures effectuées (CM, TD, TP)
+- Calcul automatique des heures équivalentes et complémentaires
+- États de paiement en FCFA
+- Tableau de bord avec statistiques
+- Rapport comptabilité détaillé
+- Export PDF et Excel
+- Journal d'audit complet
+- Gestion des utilisateurs et rôles (admin, rh, enseignant)
+
+---
+
+## Documentation
+
+- `idtest` — Comptes de test (email + mot de passe pour chaque rôle)
+- `README.md` — Ce fichier (installation + accès)
+- `rapport_projet_gestuniv.md` — Rapport de projet complet
+- Documents Word : rapport, documentation technique, guide utilisateur
