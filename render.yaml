@@ -1,0 +1,28 @@
+services:
+  # ─────────────────────────────────────────────
+  #  FRONTEND — Static Site (React SPA)
+  # ─────────────────────────────────────────────
+  - type: web
+    name: gestuniv-frontend
+    env: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/build
+    pullRequestPreviewsEnabled: false
+    routes:
+      # SPA fallback : toutes les routes renvoient index.html
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  # ─────────────────────────────────────────────
+  #  BACKEND — Web Service (Node.js / Express)
+  # ─────────────────────────────────────────────
+  - type: web
+    name: gestuniv-backend
+    env: node
+    buildCommand: cd gestion-heures/backend && npm install
+    startCommand: node gestion-heures/backend/server.js
+    pullRequestPreviewsEnabled: false
+    envVars:
+      - key: NODE_ENV
+        value: production
