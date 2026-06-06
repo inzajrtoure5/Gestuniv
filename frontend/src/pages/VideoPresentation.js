@@ -104,7 +104,7 @@ const styles = {
 };
 
 // ━━━━ Remplace cette valeur par l'ID de ta vidéo Google Drive ━━━━
-const GOOGLE_DRIVE_FILE_ID = 'VOTRE_ID_ICI';
+const GOOGLE_DRIVE_FILE_ID = '1B1YXOsblLvyuZb8gmDbOax9pjPANrhiD';
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const isVideoReady = GOOGLE_DRIVE_FILE_ID !== 'VOTRE_ID_ICI';
